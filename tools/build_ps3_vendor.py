@@ -220,6 +220,8 @@ def typed(key, raw, defs, strict=True):
     try:
         if t in ('double', 'int'):
             v = _number(s)
+            if t == 'int' and v != int(v):
+                raise ValueError('not an integer')
             return int(v) if t == 'int' else v
         if t == 'bool':
             if s not in ('0', '1'):
@@ -395,7 +397,10 @@ def build_vendor_yaml(prusa):
     head += ['#   %s: %s' % (tid, t[3]) for tid, t in TOOLS.items()]
     head.append('# printer_config %s: tools 1-8 start as 0.4HF; pick tool 8 per session '
                 '(alpha12 does not save it, prusa3d/PrusaSlicer#15737).' % CONFIG_ID)
-    return '\n'.join(head) + '\n' + '---\n'.join(ps3_yaml.dump(d) for d in docs)
+    text = '\n'.join(head) + '\n' + '---\n'.join(ps3_yaml.dump(d) for d in docs)
+    if ps3_yaml_load_all(text) != docs:
+        refuse('vendor.yaml does not read back as written')
+    return text
 
 
 def patch_printer(text):
@@ -470,7 +475,10 @@ def port_print(resolved, defs, base_print, label):
                    % (label, k))
         if not ps3_yaml.tool_key(defs, key):
             v = typed(key, raw, defs, strict=False)
-            if key in base_print and base_print[key] != v:
+            if key not in base_print:
+                report.append('%s: %s = %r not carried (print-only in PrusaSlicer 3, and '
+                              'Prusa\'s PS3 print does not set it)' % (label, key, v))
+            elif base_print[key] != v:
                 report.append('%s: %s = %r not carried (print-only in PrusaSlicer 3, which '
                               'uses %r)' % (label, key, v, base_print[key]))
             continue
@@ -478,7 +486,7 @@ def port_print(resolved, defs, base_print, label):
     return values, report
 
 
-def tool_print_additions(prusa, ini, repo_bundle, defs, base_print):
+def tool_print_additions(prusa, ini, repo_bundle, defs, print_base):
     main, indx, hf, hf04 = tool_tree(prusa.docs['preset-tool-coreone-indx.yaml'])
     notes, report = [], []
     by_name = {v.get('name'): v for v in hf04['variants']}
@@ -503,11 +511,12 @@ def tool_print_additions(prusa, ini, repo_bundle, defs, base_print):
              'values': dict(hf.get('values') or {}, **(hf04.get('values') or {})),
              'variants': std_leaves}
 
-    def leaves(sections, sources, why):
+    def leaves(sections, sources, why, t8):
         out = []
         for src, name in sources:
             r = dict(resolve_ini(sections, 'print:' + src))
-            vals, rep = port_print(r, defs, base_print, name)
+            layer = float(ini_unescape(r['layer_height']))
+            vals, rep = port_print(r, defs, print_base(t8, layer), name)
             report.extend(rep)
             out.append({'condition': 'print.layer_height == %s' % ini_unescape(r['layer_height']),
                         'name': name, 'id': ps3_yaml.new_id('tool_print', name), 'values': vals})
@@ -515,9 +524,9 @@ def tool_print_additions(prusa, ini, repo_bundle, defs, base_print):
         return out
 
     n025 = {'condition': 'tool.nozzle_diameter == 0.25', 'id': ps3_yaml.new_id('tool_print', '0.25'),
-            'variants': leaves(ini, SRC_025, SRC_025_WHY)}
+            'variants': leaves(ini, SRC_025, SRC_025_WHY, '0.25')}
     hf06 = {'condition': 'tool.nozzle_diameter == 0.6', 'id': ps3_yaml.new_id('tool_print', 'HF0.6'),
-            'variants': leaves(repo_bundle, SRC_06, SRC_06_WHY)}
+            'variants': leaves(repo_bundle, SRC_06, SRC_06_WHY, '0.6HF')}
     nonhf = {'condition': 'not tool.nozzle_high_flow', 'id': ps3_yaml.new_id('tool_print', 'non-HF'),
              'variants': [std04, n025]}
     return leaf07, hf06, nonhf, notes, report
@@ -663,7 +672,10 @@ def build_filament_ports(prusa, files, defs):
             head.append('#   %s: %s (provenance in its filament_notes)' % (v['name'], bundle))
             if renamed:
                 head.append('#     renamed: %s' % ', '.join(renamed))
-        texts['preset-filament-hyiger-%s.yaml' % slug(mat)] = '\n'.join(head) + '\n' + ps3_yaml.dump(doc)
+        fname = 'preset-filament-hyiger-%s.yaml' % slug(mat)
+        if fname in texts:
+            refuse('two materials map to %s; rename one or extend slug()' % fname)
+        texts[fname] = '\n'.join(head) + '\n' + ps3_yaml.dump(doc)
     return texts, notes
 
 
@@ -758,10 +770,17 @@ def build(prusa_dir, ini_path, out_dir):
     out['vendor.yaml'] = build_vendor_yaml(prusa)
     out['preset-printer-coreone-indx.yaml'] = patch_printer(prusa.text['preset-printer-coreone-indx.yaml'])
 
-    base_prints = ps3_eval.Collection(prusa.kind_docs('print', files)).presets(
-        envs(prusa, ['0.4HF'] * 8))
-    base_print = base_prints[0].values if base_prints else {}
-    leaf07, hf06, nonhf, tnotes, treport = tool_print_additions(prusa, ini, repo_bundle, defs, base_print)
+    prints = ps3_eval.Collection(prusa.kind_docs('print', files))
+
+    def print_base(t8, layer):
+        """The print PrusaSlicer 3 uses at this layer with t8 in tool 8; of several
+        with the same name the first by (name, id) wins (PresetEvaluator.cpp:690-718)."""
+        for p in prints.presets(envs(prusa, ['0.4HF'] * 7 + [t8])):
+            if abs(float(p.values.get('layer_height', -1)) - layer) < 1e-9:
+                return p.values
+        refuse('Prusa\'s PS3 profiles have no %.2f mm print for a %s tool 8' % (layer, t8))
+
+    leaf07, hf06, nonhf, tnotes, treport = tool_print_additions(prusa, ini, repo_bundle, defs, print_base)
     out['preset-tool-coreone-indx.yaml'] = patch_tool(
         prusa.text['preset-tool-coreone-indx.yaml'], prusa.docs['preset-tool-coreone-indx.yaml'],
         leaf07, hf06, nonhf, tnotes, treport)

@@ -35,8 +35,19 @@ def _name(token):
 
 
 def _fff_branch(body):
-    m = re.search(r'if\s*\(\s*technology\s*==\s*FFF\s*\)\s*(\{[^}]*\}|[^;]*;)', body)
-    return m.group(1) if m else None
+    """The statement or brace-balanced block after `if (technology == FFF)`."""
+    m = re.search(r'if\s*\(\s*technology\s*==\s*FFF\s*\)\s*', body)
+    if not m:
+        return None
+    rest = body[m.end():]
+    if not rest.startswith('{'):
+        return rest[:rest.index(';') + 1]
+    depth = 0
+    for i, c in enumerate(rest):
+        depth += {'{': 1, '}': -1}.get(c, 0)
+        if depth == 0:
+            return rest[:i + 1]
+    raise ValueError('unbalanced FFF branch')
 
 
 def parse(src):

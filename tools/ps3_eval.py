@@ -202,6 +202,16 @@ def derive_name(name, parent):
     return out
 
 
+def node_id(node, parent_id):
+    """A node's id. A node with a name and no id takes one derived from its name
+    (PresetCollectionEvaluator.cpp:269-278, which warns that it may not be unique)."""
+    if node.get('id') is not None:
+        return derive_name(str(node['id']), parent_id)
+    if node.get('name') is not None:
+        return derive_name(str(node['name']), parent_id)
+    return ''
+
+
 def is_public(name):
     return bool(name) and not name.startswith('*')
 
@@ -233,15 +243,16 @@ class Collection:
         self.top_by_id = {}
         self.path_by_id = {}
         for doc in self.tops:
-            self.top_by_id.setdefault(doc.get('id'), doc)
+            self.top_by_id.setdefault(node_id(doc, ''), doc)
             self._index(doc, [])
 
-    def _index(self, node, path):
+    def _index(self, node, path, parent_id=''):
         path = path + [node]
-        if node.get('id') is not None:
-            self.path_by_id.setdefault(str(node['id']), path)
+        nid = node_id(node, parent_id)
+        if nid:
+            self.path_by_id.setdefault(nid, path)
         for v in node.get('variants') or []:
-            self._index(v, path)
+            self._index(v, path, nid)
 
     def check_references(self):
         """Every id named by inherits / unconditional_inherits exists. alpha12 aborts
@@ -283,6 +294,8 @@ class Collection:
         for ctx in ret:
             if node.get('id') is not None:
                 ctx.id = derive_name(str(node['id']), ctx.id)
+            elif node.get('name') is not None:
+                ctx.id = derive_name(str(node['name']), ctx.id)
             if node.get('name') is not None:
                 ctx.name = derive_name(str(node['name']), ctx.name)
             if node.get('match_mode') is not None:

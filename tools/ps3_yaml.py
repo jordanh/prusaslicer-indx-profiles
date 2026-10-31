@@ -68,6 +68,10 @@ def filament_key(defs, key):
 # --- writing -----------------------------------------------------------------
 
 _PLAIN = re.compile(r'^[A-Za-z0-9_$.][^:#\n]*$')
+# Not printable in YAML (c-printable, YAML 1.1 5.1) or read as a line break:
+# C0 controls but tab and newline, DEL, C1 controls (NEL among them), the
+# Unicode line and paragraph separators, and the byte-order mark.
+_UNSAFE = re.compile('[\x00-\x08\x0b-\x1f\x7f-\x9f\u2028\u2029\ufeff]')
 
 
 def _reads_back(text, value):
@@ -95,13 +99,16 @@ def _scalar(value):
         if (value and _PLAIN.match(value) and value == value.strip()
                 and _reads_back(value, value)):
             return value
-        return json.dumps(value, ensure_ascii=False)  # a JSON string is YAML too
+        # A JSON string is a YAML double-quoted scalar, once the characters YAML
+        # reads as line breaks or refuses as non-printable are escaped too.
+        return _UNSAFE.sub(lambda m: '\\u%04x' % ord(m.group(0)),
+                           json.dumps(value, ensure_ascii=False))
     raise TypeError('cannot write %r' % (value,))
 
 
 def _literal(value, indent):
     """A multi-line string as a literal block, when YAML reads it back exactly."""
-    if '\r' in value or '\t' in value or value.startswith((' ', '\n')):
+    if '\r' in value or '\t' in value or value.startswith((' ', '\n')) or _UNSAFE.search(value):
         return None
     lines = value.split('\n')
     if any(line != line.rstrip(' ') for line in lines):
@@ -140,6 +147,8 @@ def _emit(value, indent, out):
                 _emit(item, indent + 2, sub)
                 sub[0] = pad + '- ' + sub[0][indent + 2:]
                 out.extend(sub)
+            elif isinstance(item, list) and item:
+                raise TypeError('nested lists are not written: %r' % (item,))
             elif isinstance(item, (dict, list)):
                 out.append('%s- %s' % (pad, '{}' if isinstance(item, dict) else '[]'))
             else:

@@ -45,6 +45,15 @@ class Dump(unittest.TestCase):
              't': [{'tool': '0.4HF'}, {'tool': '0.25'}], 'u': 'a: b', 'v': '- x'}
         self.assertEqual(yaml.safe_load(ps3_yaml.dump(d)), d)
 
+    def test_dump_escapes_line_separators_and_controls(self):
+        d = {'a': 'x y', 'b': 'x y', 'c': 'x\x85y', 'd': 'G1\n\x0bG2\n', 'e': 'a\x1bb',
+             'f': 'del\x7f'}
+        self.assertEqual(yaml.safe_load(ps3_yaml.dump(d)), d)
+
+    def test_dump_refuses_nested_lists(self):
+        with self.assertRaises(TypeError):
+            ps3_yaml.dump({'a': [[1]]})
+
     def test_dump_keeps_order(self):
         text = ps3_yaml.dump({'kind': 'tool_print', 'id': 'x', 'variants': []})
         self.assertLess(text.index('kind'), text.index('id'))
@@ -81,6 +90,14 @@ class KeyDefs(Scratch):
     );
     '''
     COMMON = '''
+    def = defs.add("max_print_height", typeid(double));
+    if (technology == SLA) {
+        def->location = printer;
+    }
+    if (technology == FFF) {
+        def->overrides_in = Locations{ fdm_tool };
+        def->location = FDMConfigLocation::Print;
+    }
     def = defs.add("elefant_foot_compensation", typeid(double));
     if (technology == SLA) {
         def->location = printer;
@@ -111,6 +128,9 @@ class KeyDefs(Scratch):
         self.assertEqual(defs['elefant_foot_compensation'].location, 'Print')
         self.assertIn('Tool', defs['elefant_foot_compensation'].overrides)
         self.assertEqual(defs['layer_height'].overrides, frozenset({'Object', 'Volume'}))
+        # the FFF branch is read whole, even when overrides_in's braces come first
+        self.assertEqual(defs['max_print_height'].location, 'Print')
+        self.assertEqual(defs['max_print_height'].overrides, frozenset({'Tool'}))
         self.assertTrue(ps3_yaml.tool_key(defs, 'retract_length'))
         self.assertTrue(ps3_yaml.filament_key(defs, 'retract_length'))
         self.assertFalse(ps3_yaml.tool_key(defs, 'skirts'))
@@ -249,6 +269,21 @@ class Resolution(unittest.TestCase):
         v = got['Mine'].values
         self.assertEqual((v['filament_max_volumetric_speed'], v['temperature'], v['retract_length']),
                          (30, 270, 0.8))
+
+    def test_named_node_without_id_takes_its_name(self):
+        coll = ps3_eval.Collection(docs('''
+        kind: filament
+        name: Base
+        values: {temperature: 200}
+        ---
+        kind: filament
+        id: child
+        name: Child
+        inherits: [Base]
+        '''))
+        coll.check_references()
+        self.assertEqual({p.name: p.values['temperature'] for p in coll.presets([tool(0.4, True)])},
+                         {'Base': 200, 'Child': 200})
 
     def test_dangling_id_raises(self):
         with self.assertRaises(ps3_eval.DanglingId):
@@ -458,6 +493,17 @@ class Translation(unittest.TestCase):
                                 'start_filament_gcode': '; Filament g-code'})
         self.assertEqual(sorted(renamed), ['filament_retract_before_wipe', 'filament_retract_length'])
 
+    def test_non_integral_int_refuses(self):
+        with self.assertRaises(SystemExit):
+            bpv.typed('perimeters', '2.5', self.DEFS)
+        self.assertEqual(bpv.typed('perimeters', '3', self.DEFS), 3)
+
+    def test_print_only_value_absent_from_ps3_is_reported(self):
+        vals, report = bpv.port_print({'skirts': '2', 'perimeters': '3'}, self.DEFS, {}, 'x')
+        self.assertEqual(vals, {'perimeters': 3})
+        self.assertEqual(len(report), 1)
+        self.assertIn('skirts', report[0])
+
     def test_unknown_filament_key_refuses(self):
         with self.assertRaises(SystemExit):
             bpv.port_filament({'filament_made_up': '1'}, self.DEFS, 'x')
@@ -503,6 +549,25 @@ class Install(Scratch):
         self.assertEqual(r2['copied'], [])
         vendor = os.path.join(self.data, 'presets', 'local', install_ps3.REPO_DIR, 'hyigerINDX')
         self.assertTrue(os.path.isfile(os.path.join(vendor, 'vendor.yaml')))
+
+    def test_inherits_must_name_a_top_level_id(self):
+        # 'known' is a variant id: unconditional_inherits may name it, inherits may not
+        self.write('data/presets/user/prusa-research-fff/PrusaResearch/filament-Bad.yaml',
+                   'kind: filament\nid: u5\nname: Bad\ninherits: [known]\n')
+        r = install_ps3.install(self.src, self.data)
+        self.assertIn('filament-Bad.yaml', ' '.join(r['skipped']))
+
+    def test_user_presets_that_inherit_each_other(self):
+        self.write('data/presets/user/prusa-research-fff/PrusaResearch/filament-A.yaml',
+                   'kind: filament\nid: ua\nname: A\nunconditional_inherits: [known]\n')
+        self.write('data/presets/user/prusa-research-fff/PrusaResearch/filament-B.yaml',
+                   'kind: filament\nid: ub\nname: B\ninherits: [ua]\n')
+        self.write('data/presets/user/prusa-research-fff/PrusaResearch/filament-C.yaml',
+                   'kind: filament\nid: uc\nname: C\ninherits: [u3]\n')  # u3 is Other: skipped
+        r = install_ps3.install(self.src, self.data)
+        self.assertIn('filament-A.yaml', r['copied'])
+        self.assertIn('filament-B.yaml', r['copied'])
+        self.assertIn('filament-C.yaml', ' '.join(r['skipped']))
 
     def test_refuses_a_folder_that_is_not_prusaslicer3(self):
         with self.assertRaises(SystemExit):

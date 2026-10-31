@@ -54,24 +54,37 @@ def _walk(node):
         yield from _walk(v)
 
 
-def vendor_ids(vendor_dir):
-    ids = set()
-    for f in os.listdir(vendor_dir):
+def ids_of(docs):
+    """(top-level ids, ids of any node), each as (kind, id). `inherits` may name
+    only a top-level node (PresetCollectionEvaluator.cpp:208); `unconditional_inherits`
+    and `based_id` may name any node."""
+    top, every = set(), set()
+    for d in docs:
+        kind = d.get('kind')
+        if d.get('id') is not None:
+            top.add((kind, str(d['id'])))
+        every.update((kind, str(n['id'])) for n in _walk(d) if n.get('id') is not None)
+    return top, every
+
+
+def folder_docs(folder):
+    out = {}
+    for f in sorted(os.listdir(folder)):
         if f.endswith('.yaml') and f != 'vendor.yaml':
-            for d in _docs(os.path.join(vendor_dir, f)):
-                ids.update((d.get('kind'), str(n['id'])) for n in _walk(d) if n.get('id') is not None)
-    return ids
+            out[f] = _docs(os.path.join(folder, f))
+    return out
 
 
 def needed(doc):
-    out = set()
+    """(ids that must be top-level, ids that may be any node) this preset names."""
+    kind, top, every = doc.get('kind'), set(), set()
     for n in _walk(doc):
-        for key in ('inherits', 'unconditional_inherits'):
-            out.update(str(i) for i in n.get(key) or [])
+        top.update((kind, str(i)) for i in n.get('inherits') or [])
+        every.update((kind, str(i)) for i in n.get('unconditional_inherits') or [])
         based = (n.get('features') or {}).get('based_id')
         if based:
-            out.add(str(based))
-    return {(doc.get('kind'), i) for i in out}
+            every.add((kind, str(based)))
+    return top, every
 
 
 def install(src, datadir, migrate=True):
@@ -99,22 +112,47 @@ def install(src, datadir, migrate=True):
     ours = os.path.join(presets, 'user', REPO_DIR, VENDOR_ID)
     if not os.path.isdir(theirs):
         return report
-    known = vendor_ids(dest)
-    for f in sorted(os.listdir(theirs)):
-        if not f.endswith('.yaml'):
-            continue
-        target = os.path.join(ours, f)
-        if os.path.exists(target):
+    # What the new vendor's folder will hold: the vendor itself, the user presets
+    # already there, and the candidates accepted so far. A candidate is accepted
+    # once everything it names is known, until nothing changes, so presets that
+    # inherit each other come over together and a chain with a missing link stays.
+    known_top, known_any = set(), set()
+    groups = [folder_docs(dest)] + ([folder_docs(ours)] if os.path.isdir(ours) else [])
+    for g in groups:
+        for docs in g.values():
+            t, a = ids_of(docs)
+            known_top |= t
+            known_any |= a
+    pending = {}
+    for f, docs in folder_docs(theirs).items():
+        if os.path.exists(os.path.join(ours, f)):
             report['kept'].append(f)
-            continue
+        else:
+            pending[f] = docs
+    accepted, progress = [], True
+    while progress:
+        progress = False
+        for f in sorted(pending):
+            need_top, need_any = set(), set()
+            for d in pending[f]:
+                t, a = needed(d)
+                need_top |= t
+                need_any |= a
+            if need_top <= known_top and need_any <= known_any:
+                t, a = ids_of(pending.pop(f))
+                known_top |= t
+                known_any |= a
+                accepted.append(f)
+                progress = True
+    for f in sorted(pending):
         missing = set()
-        for d in _docs(os.path.join(theirs, f)):
-            missing |= needed(d) - known
-        if missing:
-            report['skipped'].append('%s (needs %s)' % (f, ', '.join(sorted(i for _, i in missing))))
-            continue
+        for d in pending[f]:
+            t, a = needed(d)
+            missing |= (t - known_top) | (a - known_any)
+        report['skipped'].append('%s (needs %s)' % (f, ', '.join(sorted(i for _, i in missing))))
+    for f in sorted(accepted):
         os.makedirs(ours, exist_ok=True)
-        shutil.copyfile(os.path.join(theirs, f), target)
+        shutil.copyfile(os.path.join(theirs, f), os.path.join(ours, f))
         report['copied'].append(f)
     return report
 
