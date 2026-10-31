@@ -245,6 +245,30 @@ output is deterministic: ids are `uuid5`). `VALIDATED = False` stamps every file
 and the stdout banner until a PS3 print is made. `tools/ps3_keydefs.tsv` is
 regenerated from a checkout of the tag with `tools/extract_ps3_keydefs.py`.
 
+Then check the result with PrusaSlicer 3 itself, which has a headless CLI. Work
+on a **copy** of the data folder (`presets`, `shared_runtime`, `update_sync`),
+install into it with `install_ps3.py --datadir`, and always pass
+`--no-single-instance`, or the command is handed to a running GUI:
+
+```bash
+APP=/Applications/PrusaSlicer-3.0.0-alpha12.app/Contents/MacOS/PrusaSlicer
+"$APP" --no-single-instance --datadir "$D" --query-printer-models --output models.json
+"$APP" --no-single-instance --datadir "$D" --query-print-tool-filament-profiles \
+    --printer-profile "Prusa CORE One INDX JRH 8T 0.4 HF, ..., 0.4 HF" --output q.json
+```
+
+`--printer-profile` matches the configuration's display name, not the printer
+preset's (`ProfilesSharingUtils.cpp`). The query only sees configurations
+declared in `vendor.yaml`, so to test a tool-8 nozzle append a throwaway
+`printer_config` with eight `tools:` entries to the copy's `vendor.yaml`. The
+JSON lists each layer height with one tool_print per tool and one flat filament
+list (21 per HF0.4 tool, then tool 8's). On 2026-10-31 it agreed exactly with
+`LAYERS_EXPECTED` and with the generator's filament counts (23 / 19 / 14). A
+`--slice` works too, but the CLI ignores `--perimeter-extruder` and has no
+per-object tool, so it cannot make tool 8 print. It also logs "Unable to load
+bed model" for every vendor, Prusa's included: assets are virtual `/presets/...`
+paths only the GUI resolves.
+
 Reason-carrying tables (non-negotiable 2): `TOOLS`, `PRINTER_FEATURE_EDITS`,
 `HELD_007`, `STD04_WHY`, `SRC_025_WHY`, `SRC_06_WHY`, `PRINT_DROP`,
 `PRINT_RENAME`, `SUPPORT_29`, `FIL_DROP`, `PERCENT_IN_29`, `FALLTHROUGH_WHY`.

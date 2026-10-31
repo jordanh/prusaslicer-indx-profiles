@@ -1174,6 +1174,20 @@ ported presets on a tool-8 HF0.6 or 0.25, so each such material gets a leading
 generator refuses if any tool would list a material twice or an untuned preset
 would remain on a tool-8 size.
 
+### How it was checked
+
+Besides the generator's own checks, PrusaSlicer 3.0.0-alpha12 itself was asked,
+through its CLI on a copy of the data folder, what the JRH printer offers with
+each tool-8 nozzle (`--query-print-tool-filament-profiles`; recipe in
+CLAUDE.md). It loaded the vendor with no errors and returned exactly the
+layer heights above, the expected tool_print preset on every tool, and the
+expected filaments on tool 8 (23 at standard 0.4, 19 at HF0.6 including PC
+Blend Carbon Fiber, 14 at 0.25). A CLI slice with HF0.6 and PC Blend Carbon
+Fiber on tool 8 completed and wrote tool 8's nozzle (0.6), `filament_abrasive`
+(1), MVS (19) and temperature (290) into the G-code. What the CLI could not
+check: tool 8 actually printing (it cannot assign an object to a tool), the
+GUI, and sending to the printer.
+
 ### Pinning and re-pinning
 
 `PS3_PIN` and `INI_PIN` refuse any other input. Prusa's PS3 alpha changes fast
