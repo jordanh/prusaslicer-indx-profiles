@@ -123,6 +123,13 @@ tools/build_printer_preset.py  GENERATOR  printer presets (HF sizes, --std)
 tools/derive_filaments.py      GENERATOR  high-flow filament bundles
 tools/derive_std_filaments.py  GENERATOR  standard-nozzle filament bundles
 tests/test_generators.py   handwritten  synthetic-INI tests of refusals and guards
+ps3/hyigerINDX/            GENERATED  PrusaSlicer 3 vendor: the JRH printer (see "PrusaSlicer 3")
+tools/build_ps3_vendor.py  GENERATOR  ps3/hyigerINDX from Prusa's PS3 YAML + the 2.9 artifacts
+tools/ps3_eval.py          handwritten  model of alpha12 preset resolution, used to check the build
+tools/ps3_yaml.py          handwritten  YAML writer, ids, option-table access
+tools/ps3_keydefs.tsv      GENERATED  alpha12 option table (tools/extract_ps3_keydefs.py)
+tools/install_ps3.py       handwritten  copies ps3/hyigerINDX into a PrusaSlicer3-dev data folder
+tests/test_ps3.py          handwritten  synthetic tests for the PS3 tools
 LICENSE                    AGPL-3.0, this repo's own work only
 ```
 
@@ -213,6 +220,94 @@ assert still passes. An added or dropped profile surfaces as
 
 Compare **resolved** profiles, not raw text. Which keys sit in the hidden common
 versus the tier overrides is an implementation detail that shifts legitimately.
+
+## PrusaSlicer 3
+
+`ps3/hyigerINDX` is a PrusaSlicer **3.0.0-alpha12** vendor with one printer,
+`Prusa CORE One INDX 8T JRH`: tools 1-7 Prusa HF0.4, tool 8 HF0.4 / standard
+0.4 / HF0.6 / standard 0.25. The printer name is the owner's explicit request
+and lives in one constant, `PRINTER_NAME`. Everything in this section is
+verified against the `version_3.0.0-alpha12` tag; PrusaSlicer 3 line numbers
+below are that tag's. None of the 2.9 behaviors above can be assumed to hold.
+
+```bash
+PS3=~/Library/Application\ Support/PrusaSlicer3-dev/presets/local/prusa-research-fff/PrusaResearch
+INI=<the 2.5.12 PrusaResearch.ini snapshot, as for the 2.9 recipe>
+python3 tools/build_ps3_vendor.py "$PS3" "$INI" ps3/hyigerINDX
+python3 tools/install_ps3.py          # into the PrusaSlicer3-dev data folder
+```
+
+Pins: `PS3_PIN = '1.0.20'` (Prusa's `vendor.yaml` `version:`) and `INI_PIN`.
+Both refuse anything else; Prusa's alpha profiles change every few weeks, so
+re-pinning is a reviewed change. Verify like the 2.9 artifacts: rebuild into a
+scratch directory and `diff -r` against `ps3/hyigerINDX` must be empty (the
+output is deterministic: ids are `uuid5`). `VALIDATED = False` stamps every file
+and the stdout banner until a PS3 print is made. `tools/ps3_keydefs.tsv` is
+regenerated from a checkout of the tag with `tools/extract_ps3_keydefs.py`.
+
+Reason-carrying tables (non-negotiable 2): `TOOLS`, `PRINTER_FEATURE_EDITS`,
+`HELD_007`, `STD04_WHY`, `SRC_025_WHY`, `SRC_06_WHY`, `PRINT_DROP`,
+`PRINT_RENAME`, `SUPPORT_29`, `FIL_DROP`, `PERCENT_IN_29`, `FALLTHROUGH_WHY`.
+The generated file headers list every added, ported, hidden and not-carried
+value. The one held value is the HF0.4 0.07 tool_print (Prusa's 0.10 Fine,
+held), which exists only so a 0.25 tool 8 can print 0.07.
+
+Alpha12 behaviors the design rests on:
+
+- **Only `vendor.yaml` declares tools, printers and printer configurations**
+  (`HwConfigLoader.cpp:172-221`); the user-folder loader skips it
+  (`PresetLoader.cpp:82`). Tool `condition`s only filter the slot dropdown
+  (`HwConfigEvaluator.cpp:7-15`). `user_editable` is parsed and never read.
+- **Inheritance never crosses vendors** (`PresetInteractor.cpp:233`), so the
+  vendor carries verbatim copies of every Prusa file an INDX reaches
+  (`select_files()`, closure over `inherits` / `unconditional_inherits`), and
+  keeps Prusa's preset ids, which only need to be unique per vendor and kind
+  (`PresetEvaluator.cpp:448-466`). That keeps the user's own presets, which
+  inherit by id, valid when `install_ps3.py` copies them across.
+- **A dangling `inherits` / `unconditional_inherits` id aborts the app**, even in
+  release builds (`PresetCollectionEvaluator.cpp:507`). The generator checks
+  every kind with `Collection.check_references()`; the installer copies a user
+  preset only when all its ids exist.
+- **Prusa updates replace Prusa's folder and skip unknown repositories**
+  (`PresetUpdaterUtils.cpp:599-615`, `909-912`); every
+  `presets/local/<repo>/<vendor>/vendor.yaml` is loaded
+  (`BundleLoader.cpp:75-105`). Hence `presets/local/hyiger-indx/hyigerINDX`.
+- **Conditions:** `=~` is `std::regex_match`, full string (`RegEx.hpp:54`; not
+  boost as in 2.9); `and` / `or` short-circuit (`Eval.cpp:69-101`); variables
+  are `printer.*`, `feeder.*` (empty with no feeder), `sheet.*`, `tool.*` and,
+  for tool_print and filament only, `print.layer_height`
+  (`ValueMapBuilder.cpp:18-49`). An unknown variable voids the vendor's presets
+  for that printer (`PresetCollectionEvaluator.cpp:452-463`).
+- **Print and printer conditions hold if any tool matches; tool_print and
+  filament are evaluated per tool** (`PresetEvaluator.cpp:507-586`,
+  `617-651`). A print preset survives only if every tool, used or not, has a
+  tool_print at its layer height (`PresetEvaluator.cpp:668-683`). The generator
+  refuses unless each tool-8 choice offers exactly `LAYERS_EXPECTED`.
+- **A parent's tree is evaluated before the child's own name applies**
+  (`PresetCollectionEvaluator.cpp:205-268`), so a `*quit*` in a common is renamed
+  by the material. Twelve Prusa materials have no INDX `*quit*` of their own and
+  fall through to untuned presets on HF0.6 and 0.25; `fallthrough_patches()`
+  gives each a leading `*quit*` at non-0.4 INDX nozzles. `ps3_eval.py` models
+  this resolution; keep it in step with the source when re-pinning PrusaSlicer.
+- **An unknown key is logged `Invalid key` and dropped**
+  (`PresetEvaluator.cpp:310-314`). Every written key is checked against
+  `ps3_keydefs.tsv`: tool_print needs `Tool` in `overrides_in`, filament needs
+  location or override `Filament`. 139 keys are per tool.
+- **Pressure advance:** `automatic_calibration` + `pressure_advance_value` emits
+  `M572 S<v>` then `M573 R` (`GCode.cpp:4075-4084`, `GCodeWriter.cpp:623-668`),
+  which is exactly 2.9's INDX start G-code; `translate_start_gcode()` refuses
+  any other shape.
+- **Printer configuration is not saved** (`BundleLoader.cpp:148-149` commented
+  out; issue #15737): slot choices live in memory and in projects. The
+  displayed configuration name is `<printer def> 8T <tools>`
+  (`HwConfig.cpp:268`); a printer preset's own name is free.
+
+Things that look wrong but aren't: the JRH printer hides Generic ASA and PC on
+a 0.25 although stock PrusaSlicer 3 shows them (fallthrough, above); HF0.6 has
+no 0.32 Draft (tools 1-7 top out at 0.30); the 0.25 tool_print comes from
+2.5.12's released prints, not Prusa's commented PS3 draft (released and test
+printed beats drafted); standard-0.4 filaments are Prusa's PS3 ones except the
+three Prusa lacks, so they are not this repo's 2.9 standard-0.4 values.
 
 ## PrusaSlicer behaviors that dictate the design
 

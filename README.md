@@ -14,6 +14,10 @@ same toolchanger ([Mixed nozzles](#mixed-nozzles-025-on-tool-1-hf04-on-the-rest)
 Nearly every value is read out of Prusa's own `PrusaResearch.ini`, not invented;
 [docs/PROVENANCE.md](docs/PROVENANCE.md) says where each one comes from.
 
+Everything below is for PrusaSlicer **2.9**. For the **PrusaSlicer 3** alpha
+there is one printer with a swappable tool 8; see
+[PrusaSlicer 3](#prusaslicer-3-alpha-one-printer-swappable-tool-8).
+
 ## What you get
 
 | Nozzle | Print profiles | Filaments | Status |
@@ -388,6 +392,63 @@ Every number is a starting point. Calibrate in this order:
 
 More on each, and the smaller ones, in
 [docs/PROVENANCE.md](docs/PROVENANCE.md#gaps-in-detail).
+
+## PrusaSlicer 3 (alpha): one printer, swappable tool 8
+
+> **Not test printed.** Nothing in `ps3/` has been printed with PrusaSlicer 3
+> yet. The values are the same ones the 2.9 profiles above use, but the slicer
+> and the profile format are new.
+
+PrusaSlicer 3.0.0-alpha12 can slice with different nozzles on different tools,
+but Prusa's own profiles still offer only HF0.4 on the INDX. `ps3/hyigerINDX` is
+a separate vendor holding one printer, **Prusa CORE One INDX 8T JRH**:
+
+- tools 1-7: Prusa's HF0.4
+- tool 8: HF0.4 by default, or one of the nozzles below, chosen per session in
+  the printer's nozzle list (alpha12 does not remember it across restarts,
+  [#15737](https://github.com/prusa3d/PrusaSlicer/issues/15737); a saved
+  project does)
+
+| Tool 8 | For | Layer heights offered | Tool 8 filaments |
+|---|---|---|---|
+| HF0.4 (stock) | anything | 0.10, 0.15, 0.20, 0.25 | Prusa's 20 |
+| 0.4 standard (Bondtech flexibles tool) | TPU | 0.10, 0.15, 0.20, 0.25 | Prusa's 20, including TPU 95A and Generic FLEX, plus PC Blend CF, PETG V0 and PVB |
+| HF0.6 (Bondtech CHT) | PC-CF | 0.20, 0.25 | 19, including PC Blend Carbon Fiber |
+| 0.25 standard (Bondtech fine) | small, detailed PLA/PETG | 0.07, 0.10, 0.15 | 14 |
+
+Every tool must have settings for the print's one layer height, so tool 8 sets
+the range for the whole printer: with the 0.25 fitted, every job is 0.15 mm or
+finer, even one tool 8 takes no part in.
+
+It also carries copies of every preset Prusa's profiles give the INDX today
+(pinned to Prusa's profile release 1.0.20), so the JRH printer has Prusa's
+filaments and print profiles too, and Prusa's updates never touch it.
+
+**Install** (quit PrusaSlicer 3 first, or restart it after):
+
+```bash
+python3 tools/install_ps3.py
+```
+
+This copies `ps3/hyigerINDX` to `presets/local/hyiger-indx/` in the
+`PrusaSlicer3-dev` data folder and copies your own presets for Prusa's vendor
+alongside, so your calibrated presets work on the JRH printer as well. Then
+**Add printer** → vendor **hyiger INDX** → **Prusa CORE One INDX 8T JRH**.
+
+To know before trusting it:
+
+- On an HF0.6 or 0.25 tool 8, the JRH printer hides twelve of Prusa's materials
+  (Generic ASA, Generic PC, the BVOHs, ...) that would otherwise fall through
+  to a preset tuned for no nozzle. Stock PrusaSlicer 3 shows them.
+- PC-CF is abrasive: set tool 8's nozzle as hardened on the printer, or the
+  start G-code's nozzle check (`M862.1 ... A1`) will warn.
+- Sending to the printer through Prusa Connect or PrusaLink with a non-Prusa
+  vendor is untried.
+- Prusa's 1.0.20 profiles are copied as they are, so a later Prusa fix reaches
+  the JRH printer only when it is regenerated.
+
+The details, and what each value is copied from, are in
+[docs/PROVENANCE.md](docs/PROVENANCE.md#prusaslicer-3).
 
 ## Building it yourself
 
