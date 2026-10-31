@@ -463,5 +463,51 @@ class Translation(unittest.TestCase):
             bpv.port_filament({'filament_made_up': '1'}, self.DEFS, 'x')
 
 
+import install_ps3  # noqa: E402
+
+
+class Install(Scratch):
+    def setUp(self):
+        super().setUp()
+        self.src = os.path.join(self.dir, 'src', 'hyigerINDX')
+        self.write('src/hyigerINDX/vendor.yaml', 'kind: vendor\nid: hyigerINDX\n')
+        self.write('src/hyigerINDX/preset-filament-x.yaml',
+                   'kind: filament\nid: X\nname: X\nvariants:\n- id: known\n  name: X1\n')
+        self.data = os.path.join(self.dir, 'data')
+        self.write('data/presets/user/prusa-research-fff/PrusaResearch/filament-Mine.yaml',
+                   'kind: filament\nid: u1\nvariants:\n- id: u2\n  name: Mine\n'
+                   '  unconditional_inherits: [known]\n  features: {based_id: known}\n')
+        self.write('data/presets/user/prusa-research-fff/PrusaResearch/filament-Other.yaml',
+                   'kind: filament\nid: u3\nvariants:\n- id: u4\n  name: Other\n'
+                   '  unconditional_inherits: [elsewhere]\n')
+        self.user = os.path.join(self.data, 'presets', 'user', install_ps3.REPO_DIR, 'hyigerINDX')
+
+    def listing(self):
+        out = {}
+        for f in sorted(os.listdir(self.user)):
+            with open(os.path.join(self.user, f), encoding='utf-8') as fh:
+                out[f] = fh.read()
+        return out
+
+    def test_install_and_migrate_idempotent(self):
+        self.write('data/presets/user/%s/hyigerINDX/filament-Kept.yaml' % install_ps3.REPO_DIR,
+                   'kind: filament\nid: k\n')
+        r1 = install_ps3.install(self.src, self.data)
+        first = self.listing()
+        r2 = install_ps3.install(self.src, self.data)
+        self.assertEqual(self.listing(), first)
+        self.assertEqual(sorted(first), ['filament-Kept.yaml', 'filament-Mine.yaml'])
+        self.assertEqual(first['filament-Kept.yaml'], 'kind: filament\nid: k\n')
+        self.assertIn('filament-Other.yaml', ' '.join(r1['skipped']))
+        self.assertEqual(r1['copied'], ['filament-Mine.yaml'])
+        self.assertEqual(r2['copied'], [])
+        vendor = os.path.join(self.data, 'presets', 'local', install_ps3.REPO_DIR, 'hyigerINDX')
+        self.assertTrue(os.path.isfile(os.path.join(vendor, 'vendor.yaml')))
+
+    def test_refuses_a_folder_that_is_not_prusaslicer3(self):
+        with self.assertRaises(SystemExit):
+            install_ps3.install(self.src, os.path.join(self.dir, 'nowhere'))
+
+
 if __name__ == '__main__':
     unittest.main()
