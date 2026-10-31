@@ -1,0 +1,371 @@
+# PrusaSlicer 3 FFF option table, extracted by tools/extract_ps3_keydefs.py
+# from: slic3r-domain/src/Slic3r/Domain/ConfigDefsFDM.cpp, slic3r-domain/src/Slic3r/Domain/ConfigCommon.cpp
+# columns: key, location, overrides_in, type, enum names
+arc_fitting	Print		EnumWrapper	disabled,emit_center
+autoemit_temperature_commands	Printer		bool	
+automatic_extrusion_widths	Print		bool	
+automatic_infill_combination	Print	Object,Volume,Tool	bool	
+automatic_infill_combination_max_layer_height	Print	Object,Volume,Tool	FloatOrPercentage	
+avoid_crossing_curled_overhangs	Print		bool	
+avoid_crossing_perimeters	Print		bool	
+avoid_crossing_perimeters_max_detour	Print		double	
+bed_custom_model	Printer		std::string	
+bed_custom_texture	Printer		std::string	
+bed_shape	Printer		std::vector<Vec2d>	
+bed_temperature	Filament		int	
+bed_temperature_extruder	Print		int	
+before_layer_gcode	Printer		std::string	
+between_objects_gcode	Printer		std::string	
+binary_gcode	Printer		bool	
+bottom_fill_pattern	Print	Object,Volume	EnumWrapper	rectilinear,monotonic,monotoniclines,alignedrectilinear,concentric,hilbertcurve,archimedeanchords,octagramspiral
+bottom_solid_layers	Print	Tool,Object,Volume	int	
+bottom_solid_min_thickness	Print	Tool,Object,Volume	double	
+bridge_acceleration	Print	Tool	double	
+bridge_angle	Print	Object,Volume	double	
+bridge_fan_speed	Filament		int	
+bridge_flow_ratio	Print	Tool,Object,Volume	double	
+bridge_speed	Print	Tool,Object,Volume	double	
+brim_separation	Print	Tool,Object	double	
+brim_type	Print	Object	EnumWrapper	no_brim,outer_only,inner_only,outer_and_inner
+brim_width	Print	Object	double	
+chamber_minimal_temperature	Filament		int	
+chamber_temperature	Filament		int	
+color_change_gcode	Printer		std::string	
+colorprint_heights			std::vector<double>	
+compatible_printers			std::vector<std::string>	
+compatible_printers_condition			std::string	
+compatible_printers_condition_cummulative			std::vector<std::string>	
+compatible_prints			std::vector<std::string>	
+compatible_prints_condition			std::string	
+compatible_prints_condition_cummulative			std::vector<std::string>	
+complete_objects	Print		bool	
+cooling	Filament		bool	
+cooling_perimeter_transition_distance	Filament		double	
+cooling_slowdown_logic	Filament		EnumWrapper	uniform_cooling,consistent_surface
+cooling_tube_length	Printer		double	
+cooling_tube_retraction	Printer		double	
+custom_parameters_filament	Filament		std::string	
+custom_parameters_print	Print		std::string	
+custom_parameters_printer	Printer		std::string	
+default_acceleration	Print	Tool	double	
+default_filament_profile			std::vector<std::string>	
+default_material	Print		std::string	
+default_print	Printer		std::string	
+default_print_profile			std::string	
+default_tool_print	Print		std::string	
+deretract_speed	Print	Tool,Filament	double	
+disable_fan_first_layers	Filament		int	
+dont_support_bridges	Print	Tool,Object	bool	
+draft_shield	Print		EnumWrapper	disabled,limited,enabled
+duplicate_distance			double	
+elefant_foot_compensation	Print	Tool,Object,Volume	double	
+enable_dynamic_fan_speeds	Filament		bool	
+enable_dynamic_overhang_speeds	Print	Tool,Object,Volume	bool	
+enable_pressure_advance_during_ramming	Printer		bool	
+end_filament_gcode	Filament		std::string	
+end_gcode	Printer		std::string	
+ensure_vertical_shell_thickness	Print	Object,Volume	EnumWrapper	disabled,partial,enabled
+external_perimeter_acceleration	Print	Tool	double	
+external_perimeter_extrusion_width	Print	Tool,Object,Volume	FloatOrPercentage	
+external_perimeter_speed	Print	Tool,Object,Volume	FloatOrPercentage	
+external_perimeters_first	Print	Tool,Object,Volume	bool	
+extra_loading_move	Printer		double	
+extra_perimeters	Print	Tool,Object,Volume	bool	
+extra_perimeters_on_overhangs	Print	Tool,Object,Volume	bool	
+extruder	Object	Volume	int	
+extruder_clearance_height	Printer		double	
+extruder_clearance_radius	Printer		double	
+extruder_colour	Project		std::vector<std::string>	
+extruder_offset	Printer		std::vector<Vec2d>	
+extrusion_axis			std::string	
+extrusion_multiplier	Filament		double	
+extrusion_width	Print	Tool,Object	FloatOrPercentage	
+fan_always_on	Filament		bool	
+fan_below_layer_time	Filament		int	
+filament_abrasive	Filament		bool	
+filament_change_time	Printer		double	
+filament_colour	Filament		std::string	
+filament_cooling_final_speed	Filament		double	
+filament_cooling_initial_speed	Filament		double	
+filament_cooling_moves	Filament		int	
+filament_cost	Filament		double	
+filament_density	Filament		double	
+filament_diameter	Filament		double	
+filament_flush_speed	Filament		double	
+filament_flush_volume	Filament		double	
+filament_infill_max_crossing_speed	Filament		double	
+filament_infill_max_speed	Filament		double	
+filament_loading_speed	Filament		double	
+filament_loading_speed_start	Filament		double	
+filament_max_volumetric_speed	Filament		double	
+filament_minimal_purge_on_wipe_tower	Filament		double	
+filament_multitool_ramming	Filament		bool	
+filament_multitool_ramming_flow	Filament		double	
+filament_multitool_ramming_volume	Filament		double	
+filament_notes	Filament		std::string	
+filament_purge_multiplier	Filament		Percentage	
+filament_ramming_initial_delay	Filament		double	
+filament_ramming_parameters	Filament		std::string	
+filament_ramming_temperature_delta	Filament		int	
+filament_settings_id			std::vector<std::string>	
+filament_shrinkage_compensation_xy	Filament		Percentage	
+filament_shrinkage_compensation_z	Filament		Percentage	
+filament_soluble	Filament		bool	
+filament_spool_weight	Filament		double	
+filament_stamping_distance	Filament		double	
+filament_stamping_loading_speed	Filament		double	
+filament_toolchange_delay	Filament		double	
+filament_type	Filament		std::string	
+filament_unloading_speed	Filament		double	
+filament_unloading_speed_start	Filament		double	
+filament_vendor	Filament		std::string	
+fill_angle	Print	Object,Volume	double	
+fill_density	Print	Tool,Object,Volume	Percentage	
+fill_pattern	Print	Tool,Object,Volume	EnumWrapper	rectilinear,alignedrectilinear,grid,triangles,stars,cubic,line,concentric,honeycomb,3dhoneycomb,gyroid,hilbertcurve,archimedeanchords,octagramspiral,adaptivecubic,supportcubic,lightning,zigzag
+first_layer_acceleration	Print	Tool	double	
+first_layer_acceleration_over_raft	Print	Tool,Object	double	
+first_layer_bed_temperature	Filament		int	
+first_layer_external_perimeter_speed	Print	Tool	FloatOrPercentage	
+first_layer_extrusion_width	Print	Tool	FloatOrPercentage	
+first_layer_gap_fill_speed	Print	Tool	FloatOrPercentage	
+first_layer_height	Print	Tool	FloatOrPercentage	
+first_layer_infill_speed	Print	Tool	FloatOrPercentage	
+first_layer_perimeter_speed	Print	Tool	FloatOrPercentage	
+first_layer_solid_infill_speed	Print	Tool	FloatOrPercentage	
+first_layer_speed	Print	Tool	FloatOrPercentage	
+first_layer_speed_over_raft	Print	Tool,Object	FloatOrPercentage	
+first_layer_support_material_speed	Print	Tool	FloatOrPercentage	
+first_layer_temperature	Filament		int	
+first_layer_top_solid_infill_speed	Print	Tool	FloatOrPercentage	
+full_fan_speed_layer	Filament		int	
+fuzzy_skin	Print	Object,Volume	EnumWrapper	none,external,all
+fuzzy_skin_point_dist	Print	Object,Volume	double	
+fuzzy_skin_thickness	Print	Object,Volume	double	
+gap_fill_enabled	Print	Tool,Object,Volume	bool	
+gap_fill_speed	Print	Tool,Object,Volume	double	
+gcode_comments	Print		bool	
+gcode_flavor	Printer		EnumWrapper	reprap,reprapfirmware,repetier,teacup,makerware,marlin,marlin2,prusabuddy,klipper,sailfish,mach3,machinekit,smoothie,no-extrusion
+gcode_label_objects	Print		EnumWrapper	disabled,octoprint,firmware
+gcode_resolution	Print	Tool	double	
+gcode_substitutions	Print		std::vector<std::string>	
+high_current_on_filament_swap	Printer		bool	
+idle_temperature	Filament		std::optional<int>	
+infill_acceleration	Print	Tool	double	
+infill_anchor	Print	Tool,Object,Volume	FloatOrPercentage	
+infill_anchor_max	Print	Tool,Object,Volume	FloatOrPercentage	
+infill_every_layers	Print	Tool,Object,Volume	int	
+infill_extruder	Print	Object,Volume	int	
+infill_extrusion_width	Print	Tool,Object,Volume	FloatOrPercentage	
+infill_first	Print		bool	
+infill_overlap	Print	Tool,Object,Volume	FloatOrPercentage	
+infill_speed	Print	Tool,Object,Volume	double	
+inherits			std::string	
+inherits_cummulative			std::vector<std::string>	
+interface_shells	Print	Object	bool	
+interlocking_beam	Print	Object	bool	
+interlocking_beam_layer_count	Print	Object	int	
+interlocking_beam_width	Print	Object	double	
+interlocking_boundary_avoidance	Print	Object	int	
+interlocking_depth	Print	Object	int	
+interlocking_orientation	Print	Object	double	
+ironing	Print	Object,Volume	bool	
+ironing_flowrate	Print	Object,Volume	Percentage	
+ironing_spacing	Print	Object,Volume	double	
+ironing_speed	Print	Object,Volume	double	
+ironing_type	Print	Object,Volume	EnumWrapper	top,topmost,solid
+layer_gcode	Printer		std::string	
+layer_height	Print	Object,Volume	double	
+machine_limits_usage	Printer		EnumWrapper	emit_to_gcode,time_estimate_only,ignore
+machine_max_acceleration_extruding	Printer		std::vector<double>	
+machine_max_acceleration_retracting	Printer		std::vector<double>	
+machine_max_acceleration_travel	Printer		std::vector<double>	
+machine_max_junction_deviation	Printer		std::vector<double>	
+machine_min_extruding_rate	Printer		std::vector<double>	
+machine_min_travel_rate	Printer		std::vector<double>	
+max_fan_speed	Filament		int	
+max_layer_height	Print	Tool	double	
+max_print_height	Printer		double	
+max_print_speed	Print	Tool	double	
+max_volumetric_extrusion_rate_slope_negative	Print	Tool	double	
+max_volumetric_extrusion_rate_slope_positive	Print	Tool	double	
+max_volumetric_speed	Print	Tool	double	
+min_bead_width	Print	Tool,Object	FloatOrPercentage	
+min_fan_speed	Filament		int	
+min_feature_size	Print	Tool,Object	FloatOrPercentage	
+min_layer_height	Print	Tool	double	
+min_print_speed	Filament		double	
+min_skirt_length	Print		double	
+mmu_segmented_region_interlocking_depth	Print	Object	double	
+mmu_segmented_region_max_width	Print	Object	double	
+multimaterial_purging	Printer		double	
+notes	Print		std::string	
+only_one_perimeter_first_layer	Print	Tool,Object,Volume	bool	
+only_retract_when_crossing_perimeters	Print	Tool	bool	
+ooze_prevention	Print		bool	
+output_filename_format	Print		std::string	
+over_bridge_speed	Print	Tool,Object,Volume	FloatOrPercentage	
+overhang_fan_speed_0	Filament		int	
+overhang_fan_speed_1	Filament		int	
+overhang_fan_speed_2	Filament		int	
+overhang_fan_speed_3	Filament		int	
+overhang_speed_0	Print	Tool,Object,Volume	FloatOrPercentage	
+overhang_speed_1	Print	Tool,Object,Volume	FloatOrPercentage	
+overhang_speed_2	Print	Tool,Object,Volume	FloatOrPercentage	
+overhang_speed_3	Print	Tool,Object,Volume	FloatOrPercentage	
+overhangs	Print	Tool,Object,Volume	bool	
+parking_pos_retraction	Printer		double	
+pause_print_gcode	Printer		std::string	
+perimeter_acceleration	Print	Tool	double	
+perimeter_extruder	Print	Object,Volume	int	
+perimeter_extrusion_width	Print	Tool,Object,Volume	FloatOrPercentage	
+perimeter_generator	Print	Object	EnumWrapper	classic,arachne
+perimeter_speed	Print	Tool,Object,Volume	double	
+perimeters	Print	Tool,Object,Volume	int	
+physical_printer_settings_id			std::string	
+post_process	Print		std::vector<std::string>	
+prefer_clockwise_movements	Printer		bool	
+preset_name			std::string	
+pressure_advance	Filament		EnumWrapper	disabled,enabled,automatic_calibration
+pressure_advance_value	Filament		double	
+print_settings_id			std::string	
+printer_model	Printer		std::string	
+printer_notes	Printer		std::string	
+printer_settings_id			std::string	
+printer_technology	Printer		EnumWrapper	FFF,SLA
+printer_variant	Printer		std::string	
+printer_vendor	Printer		std::string	
+profile_vendor			std::string	
+profile_version			std::string	
+raft_contact_distance	Print	Tool,Object	double	
+raft_expansion	Print	Tool,Object	double	
+raft_first_layer_density	Print	Tool,Object	Percentage	
+raft_first_layer_expansion	Print	Tool,Object	double	
+raft_layers	Print	Object	int	
+remaining_times	Printer		bool	
+resolution	Print		double	
+retract_before_travel	Print	Tool,Filament	double	
+retract_before_wipe	Print	Tool,Filament	Percentage	
+retract_layer_change	Print	Tool,Filament	bool	
+retract_length	Print	Tool,Filament	double	
+retract_length_toolchange	Print	Tool,Filament	double	
+retract_lift	Print	Tool,Filament	double	
+retract_lift_above	Print	Tool,Filament	double	
+retract_lift_below	Print	Tool,Filament	double	
+retract_restart_extra	Print	Tool,Filament	double	
+retract_restart_extra_toolchange	Print	Tool,Filament	double	
+retract_speed	Print	Tool,Filament	double	
+scarf_seam_entire_loop	Print	Object,Volume	bool	
+scarf_seam_length	Print	Object,Volume	double	
+scarf_seam_max_segment_length	Print	Object,Volume	double	
+scarf_seam_on_inner_perimeters	Print	Object,Volume	bool	
+scarf_seam_only_on_smooth	Print	Object,Volume	bool	
+scarf_seam_placement	Print	Object,Volume	EnumWrapper	nowhere,contours,everywhere
+scarf_seam_start_height	Print	Object,Volume	Percentage	
+seam_gap_distance	Print	Filament	FloatOrPercentage	
+seam_position	Print	Tool,Object	EnumWrapper	random,nearest,aligned,rear
+silent_mode	Printer		bool	
+single_extruder_multi_material	Printer		bool	
+single_extruder_multi_material_priming	Print		bool	
+skirt_distance	Print		double	
+skirt_height	Print		int	
+skirts	Print		int	
+slice_closing_radius	Print	Object,Volume	double	
+slicing_mode	Print	Object	EnumWrapper	regular,even_odd,close_holes
+slowdown_below_layer_time	Filament		int	
+small_perimeter_speed	Print	Tool,Object,Volume	FloatOrPercentage	
+solid_infill_acceleration	Print	Tool	double	
+solid_infill_below_area	Print	Object,Volume	double	
+solid_infill_every_layers	Print	Object,Volume	int	
+solid_infill_extruder	Print	Object,Volume	int	
+solid_infill_extrusion_width	Print	Tool,Object,Volume	FloatOrPercentage	
+solid_infill_speed	Print	Tool,Object,Volume	FloatOrPercentage	
+solid_layers			int	
+solid_min_thickness			double	
+spiral_vase	Print		bool	
+staggered_inner_seams	Print	Object	bool	
+standby_temperature_delta	Print		int	
+start_filament_gcode	Filament		std::string	
+start_gcode	Printer		std::string	
+stuck_filament_detection	Printer		bool	
+support_material	Print	Object	EnumWrapper	none,enforcers_only,everywhere
+support_material_angle	Print	Tool,Object	double	
+support_material_bottom_contact_distance	Print	Tool,Object	double	
+support_material_bottom_interface_layers	Print	Tool,Object	int	
+support_material_buildplate_only	Print	Object	bool	
+support_material_closing_radius	Print	Tool,Object	double	
+support_material_contact_distance	Print	Tool,Object	double	
+support_material_enforce_layers	Print	Tool,Object	int	
+support_material_extruder	Print	Object	int	
+support_material_extrusion_width	Print	Tool,Object	FloatOrPercentage	
+support_material_first_layer_density	Print	Tool,Object	Percentage	
+support_material_first_layer_expansion	Print	Tool,Object	double	
+support_material_interface_contact_loops	Print	Tool,Object	bool	
+support_material_interface_extruder	Print	Object	int	
+support_material_interface_layers	Print	Tool,Object	int	
+support_material_interface_pattern	Print	Tool,Object	EnumWrapper	auto,rectilinear,concentric
+support_material_interface_spacing	Print	Tool,Object	double	
+support_material_interface_speed	Print	Tool,Object	FloatOrPercentage	
+support_material_pattern	Print	Tool,Object	EnumWrapper	rectilinear,rectilinear-grid,honeycomb
+support_material_spacing	Print	Tool,Object	double	
+support_material_speed	Print	Tool,Object	double	
+support_material_style	Print	Tool,Object	EnumWrapper	grid,snug,organic
+support_material_synchronize_layers	Print	Tool,Object	bool	
+support_material_threshold	Print	Tool,Object	int	
+support_material_with_sheath	Print	Tool,Object	bool	
+support_material_xy_spacing	Print	Tool,Object	FloatOrPercentage	
+support_tree_angle	Print	Tool,Object	double	
+support_tree_angle_slow	Print	Tool,Object	double	
+support_tree_branch_diameter	Print	Tool,Object	double	
+support_tree_branch_diameter_angle	Print	Tool,Object	double	
+support_tree_branch_diameter_double_wall	Print	Tool,Object	double	
+support_tree_branch_distance	Print	Tool,Object	double	
+support_tree_tip_diameter	Print	Tool,Object	double	
+support_tree_top_rate	Print	Tool,Object	Percentage	
+temperature	Filament		int	
+template_custom_gcode	Printer		std::string	
+thick_bridges	Print	Tool,Object	bool	
+thin_walls	Print	Object,Volume	bool	
+thumbnails	Printer		std::string	
+thumbnails_format	Printer		EnumWrapper	PNG,JPG,QOI
+toolchange_gcode	Printer		std::string	
+toolchange_ordering	Print	Tool	EnumWrapper	optimized,cyclic
+top_fill_pattern	Print	Object,Volume	EnumWrapper	rectilinear,monotonic,monotoniclines,alignedrectilinear,concentric,hilbertcurve,archimedeanchords,octagramspiral
+top_infill_extrusion_width	Print	Tool,Object,Volume	FloatOrPercentage	
+top_one_perimeter_type	Print	Tool,Object,Volume	EnumWrapper	none,top,topmost
+top_solid_infill_acceleration	Print	Tool	double	
+top_solid_infill_speed	Print	Tool,Object,Volume	FloatOrPercentage	
+top_solid_layers	Print	Tool,Object,Volume	int	
+top_solid_min_thickness	Print	Tool,Object,Volume	double	
+travel_acceleration	Print	Tool	double	
+travel_lift_before_obstacle	Print	Tool,Filament	bool	
+travel_max_lift	Print	Tool,Filament	double	
+travel_ramping_lift	Print	Tool,Filament	bool	
+travel_short_distance_acceleration	Print	Tool	double	
+travel_slope	Print	Tool,Filament	double	
+travel_speed	Print	Tool	double	
+travel_speed_z	Print	Tool	double	
+use_firmware_retraction	Printer		bool	
+use_relative_e_distances	Printer		bool	
+use_volumetric_e	Printer		bool	
+variable_layer_height	Printer		bool	
+wall_distribution_count	Print	Tool,Object	int	
+wall_transition_angle	Print	Tool,Object	double	
+wall_transition_filter_deviation	Print	Tool,Object	FloatOrPercentage	
+wall_transition_length	Print	Tool,Object	FloatOrPercentage	
+wipe	Print	Tool,Filament	bool	
+wipe_into_infill	Volume		bool	
+wipe_into_objects	Object		bool	
+wipe_tower	Print		bool	
+wipe_tower_acceleration	Print		double	
+wipe_tower_bridging	Print	Tool	double	
+wipe_tower_brim_width	Print		double	
+wipe_tower_cone_angle	Print		double	
+wipe_tower_extra_flow	Print	Tool	Percentage	
+wipe_tower_extra_spacing	Print	Tool	Percentage	
+wipe_tower_extruder	Print		int	
+wipe_tower_no_sparse_layers	Print		bool	
+wipe_tower_width	Print		double	
+wiping_volumes_matrix	Project		std::vector<double>	
+wiping_volumes_use_custom_matrix	Project		bool	
+xy_size_compensation	Print	Object	double	
+z_offset	Printer		double	
