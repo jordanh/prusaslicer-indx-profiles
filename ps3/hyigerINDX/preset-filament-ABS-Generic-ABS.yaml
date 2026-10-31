@@ -1,0 +1,17 @@
+# UNVALIDATED: nothing in this vendor has been printed with PrusaSlicer 3 yet.
+# Prusa Research FFF 1.0.20 preset-filament-ABS-Generic-ABS.yaml, copied by tools/build_ps3_vendor.py; a leading *quit* variant is
+# added to each material listed here:
+#   Generic ABS (preset-filament-ABS-Generic-ABS.yaml): Prusa's INDX branch for this material has no '*quit*', so on a nozzle Prusa has no INDX profile for it falls through to a preset tuned for none; hidden there, at 0.25, 0.6HF
+kind: filament
+inherits:
+- '*ABS*'
+name: Generic ABS
+condition: printer.base_model=~/(COREONE|MK4|MK3.5|MK2|XL|MK3|MK2.5|MINI|COREONE_INDX)/
+id: Generic ABS
+values:
+  filament_cost: '45.10'
+  filament_vendor: Generic
+variants:
+- condition: printer.base_model == "COREONE_INDX" and tool.nozzle_diameter != 0.4
+  name: "*quit*"
+  id: kF1udM4xW3m0tMWhhmV1UA

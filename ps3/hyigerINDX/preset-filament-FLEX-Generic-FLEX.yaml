@@ -1,0 +1,19 @@
+# UNVALIDATED: nothing in this vendor has been printed with PrusaSlicer 3 yet.
+# Prusa Research FFF 1.0.20 preset-filament-FLEX-Generic-FLEX.yaml, copied by tools/build_ps3_vendor.py; a leading *quit* variant is
+# added to each material listed here:
+#   Generic FLEX (preset-filament-FLEX-Generic-FLEX.yaml): Prusa's INDX branch for this material has no '*quit*', so on a nozzle Prusa has no INDX profile for it falls through to a preset tuned for none; hidden there, at 0.6HF
+kind: filament
+inherits:
+- '*FLEX*'
+features:
+  $.type: TPU
+name: Generic FLEX
+id: Generic FLEX
+condition: printer.base_model=~/(COREONE|MK4|MK3.5|MK2|XL|MK3|MK2.5|MINI|COREONE_INDX)/ and tool.nozzle_diameter >= 0.4 and (feeder.base_model!~/.*MMU.*/ or (feeder.base_model=~/.*MMU.*/ and feeder.single_mode))
+values:
+  filament_cost: '40'
+  filament_vendor: Generic
+variants:
+- condition: printer.base_model == "COREONE_INDX" and tool.nozzle_diameter != 0.4
+  name: "*quit*"
+  id: Un+ADEV7VbCq2lS/XaFpxQ

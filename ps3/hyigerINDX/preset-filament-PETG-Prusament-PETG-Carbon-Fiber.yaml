@@ -1,0 +1,16 @@
+# UNVALIDATED: nothing in this vendor has been printed with PrusaSlicer 3 yet.
+# Prusa Research FFF 1.0.20 preset-filament-PETG-Prusament-PETG-Carbon-Fiber.yaml, copied by tools/build_ps3_vendor.py; a leading *quit* variant is
+# added to each material listed here:
+#   Prusament PETG Carbon Fiber (preset-filament-PETG-Prusament-PETG-Carbon-Fiber.yaml): Prusa's INDX branch for this material has no '*quit*', so on a nozzle Prusa has no INDX profile for it falls through to a preset tuned for none; hidden there, at 0.6HF
+kind: filament
+inherits:
+- '*PETCF*'
+name: Prusament PETG Carbon Fiber
+condition: printer.base_model=~/(COREONE|MK4|MK3.5|MK2|XL|MK3|MK2.5|MINI|COREONE_INDX)/ and tool.nozzle_diameter >= 0.4 and feeder.model != "MMU3_32bit"
+id: Prusament PETG Carbon Fiber
+values:
+  filament_vendor: Prusa Polymers
+variants:
+- condition: printer.base_model == "COREONE_INDX" and tool.nozzle_diameter != 0.4
+  name: "*quit*"
+  id: gZdSOmxtWbG57Efyyaq5Eg
