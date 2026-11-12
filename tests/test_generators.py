@@ -1173,3 +1173,183 @@ class UnsourcedVectorScan(unittest.TestCase):
     def test_a_commented_draft_is_scanned_too(self):
         with self.assertRaises(SystemExit):
             self.b.assert_unsourced({}, self.fitted('0.4,1.0'), '1.0')
+
+
+# --- derive_flex_filaments.py: Prusa's INDX flex drafts, completed --------------
+
+FLEX_BASE = '''
+[filament:*FLEX04PGC1INDX*]
+inherits = *C1INDX_common*
+compatible_printers_condition = printer_model=~/(COREONE_INDX8T|COREONE_INDX4T)/ and nozzle_diameter[0]==0.4
+start_filament_gcode = "M572 S0 ; Pressure advance"
+'''
+FLEX_COMMON = '''
+[filament:*C1INDX_common*]
+filament_multitool_ramming = 1
+filament_multitool_ramming_flow = 30
+filament_minimal_purge_on_wipe_tower = 10
+'''
+FLEX_BODY = '''
+start_filament_gcode = "M572 S0 ; Pressure advance\\n\\nM906 P2 ; set E current"
+filament_multitool_ramming_flow = 2
+filament_minimal_purge_on_wipe_tower = 15
+filament_retract_length = 1.5
+filament_retract_speed = 60
+filament_deretract_speed = 20
+filament_retract_layer_change = 0
+filament_travel_ramping_lift = 0
+filament_max_volumetric_speed = 2
+temperature = 220
+'''
+
+
+FLEXFILL_SET = '''
+        first_layer_temperature = 240
+        bed_temperature = 50
+        first_layer_bed_temperature = 50
+        extrusion_multiplier = 1.08
+        min_fan_speed = 45
+        max_fan_speed = 45
+        bridge_fan_speed = 70
+'''
+
+
+NINJA_SET = '''
+        max_fan_speed = 50
+        bridge_fan_speed = 60
+'''
+
+
+def flex_ini(tpu_mvs='2', tpu_retract='1.5', ninja_temp='238', ninja_bed='50',
+             released_draft=False, semiflex_renamed='"SemiFlex or Flexfill 98A"',
+             flexfill_set=FLEXFILL_SET, ninja_set=NINJA_SET):
+    released = []
+    for mat in ('Generic FLEX', 'Prusament TPU 95A'):
+        released.append('[filament:%s @COREONE]\nfilament_max_volumetric_speed = 2.5\n' % mat)
+        body = FLEX_BODY.replace('filament_retract_length = 1.5', 'filament_retract_length = '
+                                 + (tpu_retract if mat != 'Generic FLEX' else '1.5'))
+        if mat != 'Generic FLEX':
+            body = body.replace('filament_max_volumetric_speed = 2',
+                                'filament_max_volumetric_speed = ' + tpu_mvs)
+        released.append('[filament:%s @COREONEINDX HF0.4]\ninherits = %s @COREONE; '
+                        '*FLEX04PGC1INDX*\n%s' % (mat, mat, body.strip()))
+    parts = [VENDOR, FLEX_COMMON, FLEX_BASE] + released + [
+        '''
+        [filament:NinjaTek NinjaFlex TPU @COREONE]
+        temperature = %s
+        first_layer_temperature = %s
+        bed_temperature = %s
+        first_layer_bed_temperature = 50
+        filament_retract_length = 3.5
+        filament_max_volumetric_speed = 3
+        %s
+        ''' % (ninja_temp, ninja_temp, ninja_bed, ninja_set.strip()),
+        '''
+        [filament:Fillamentum Flexfill 98A @COREONE]
+        temperature = 240
+        filament_density = 1.23
+        filament_spool_weight = 230
+        filament_max_volumetric_speed = 2
+        %s
+        ''' % flexfill_set.strip(),
+        '''
+        [filament:SemiFlex]
+        renamed_from = %s
+        filament_density = 1.22
+        filament_cost = 82.26
+        ''' % semiflex_renamed,
+        '''
+        ; [filament:NinjaTek NinjaFlex TPU @COREONEINDX]
+        ; inherits = NinjaTek NinjaFlex TPU @COREONE; *FLEX04PGC1INDX*
+        ; min_fan_speed = 40
+        ; filament_max_volumetric_speed = 3
+
+        ; [filament:Fillamentum Flexfill 98A @COREONEINDX]
+        ; inherits = Fillamentum Flexfill 98A @COREONE; *FLEX04PGC1INDX*
+        ; filament_max_volumetric_speed = 2
+        ''']
+    if released_draft:
+        parts.append('[filament:NinjaTek NinjaFlex TPU @COREONEINDX]\n'
+                     'inherits = NinjaTek NinjaFlex TPU @COREONE; *FLEX04PGC1INDX*\n')
+    return ini(*parts)
+
+
+class FlexDrafts(Tool):
+    TOOL = 'derive_flex_filaments.py'
+
+    def sections(self, text):
+        sys.path.insert(0, TOOLS)
+        from build_print_profiles import load
+        return load(self.out)
+
+    def test_drafts_are_completed_rebound_and_marked_unvalidated(self):
+        text = self.assertBuilds(self.run_tool(self.TOOL, flex_ini()))
+        s = self.sections(text)
+        nf = s['filament:NinjaTek NinjaFlex TPU @COREONEINDX 0.4']
+        self.assertEqual(nf['filament_multitool_ramming_flow'], '2')   # not the common's 30
+        # NinjaFlex is calibrated, so the derivation shows in its notes: retraction
+        # Prusa's INDX 1.5 (not the MK4 3.5), MVS 3 x 2/2.5, the material's own 238
+        for derived in ('filament_retract_length 0.2 (derived 1.5)',
+                        'filament_max_volumetric_speed 1.5 (derived 2.4)',
+                        'temperature 230 (derived 238)'):
+            self.assertIn(derived, nf['filament_notes'])
+        self.assertIn('M906 P2', nf['start_filament_gcode'])
+        self.assertTrue(nf['compatible_printers_condition'].endswith(
+            'nozzle_diameter[0]==0.4 and ! nozzle_high_flow[0]'))
+        self.assertIn('No finished part printed yet', nf['filament_notes'])
+        self.assertIn('calibration prints only, no finished part yet', text)
+        sf = s['filament:NinjaTek SemiFlex TPU @COREONEINDX 0.4']
+        self.assertEqual(sf['filament_density'], '1.22')               # SemiFlex's, not 1.23
+        self.assertNotIn('filament_spool_weight', sf)                  # Fillamentum's spool dropped
+        self.assertEqual(sf['filament_vendor'], 'NinjaTek')
+        for sec in (nf, sf):
+            self.assertNotIn('"', sec['filament_notes'][1:-1])
+
+    def test_calibrated_values_replace_the_derived_ones_with_their_reasons(self):
+        text = self.assertBuilds(self.run_tool(self.TOOL, flex_ini()))
+        s = self.sections(text)
+        sf = s['filament:NinjaTek SemiFlex TPU @COREONEINDX 0.4']
+        self.assertEqual(sf['temperature'], '225')                     # draft's 240 replaced
+        self.assertEqual(sf['extrusion_multiplier'], '1.15')
+        self.assertEqual(sf['filament_max_volumetric_speed'], '3.6')   # not the derived 1.6
+        self.assertEqual(sf['filament_retract_length'], '0.2')         # not Prusa's INDX 1.5
+        self.assertIn('filament_max_volumetric_speed 3.6 (derived 1.6)', sf['filament_notes'])
+        self.assertNotIn('UNVALIDATED', sf['filament_notes'])
+        self.assertIn('No finished part printed yet', sf['filament_notes'])
+        self.assertIn('#   extrusion_multiplier = 1.15 (derived 1.08)', text)
+        nf = s['filament:NinjaTek NinjaFlex TPU @COREONEINDX 0.4']
+        self.assertEqual(nf['temperature'], '230')
+        self.assertEqual(nf['filament_max_volumetric_speed'], '1.5')
+        self.assertEqual(nf['filament_retract_speed'], '25')
+        self.assertIn('#   filament_retract_speed = 25 (derived 60)', text)
+        self.assertNotIn('# UNVALIDATED', text)                         # nothing left unprinted
+
+    def test_refuses_a_calibrated_key_the_derivation_never_sets(self):
+        self.assertRefuses(self.run_tool(self.TOOL, flex_ini(
+            flexfill_set=FLEXFILL_SET.replace('bridge_fan_speed = 70', ''))),
+            'calibrated key bridge_fan_speed is not set by the derivation')
+        self.assertRefuses(self.run_tool(self.TOOL, flex_ini(
+            ninja_set=NINJA_SET.replace('max_fan_speed = 50', ''))),
+            'calibrated key max_fan_speed is not set by the derivation')
+
+    def test_refuses_when_the_released_flexibles_disagree(self):
+        self.assertRefuses(self.run_tool(self.TOOL, flex_ini(tpu_retract='2')),
+                           'no longer agree on filament_retract_length')
+
+    def test_refuses_when_the_mvs_cut_differs(self):
+        self.assertRefuses(self.run_tool(self.TOOL, flex_ini(tpu_mvs='1.5')),
+                           'different ratios')
+
+    def test_refuses_once_prusa_releases_the_draft(self):
+        self.assertRefuses(self.run_tool(self.TOOL, flex_ini(released_draft=True)),
+                           'Prusa now ships NinjaTek NinjaFlex TPU @COREONEINDX')
+
+    def test_refuses_when_semiflex_loses_its_flexfill_link(self):
+        self.assertRefuses(self.run_tool(self.TOOL, flex_ini(semiflex_renamed='"SemiFlex"')),
+                           'no longer records that it was profiled with Flexfill 98A')
+
+    def test_refuses_outside_the_maker_range(self):
+        # the maker check runs on the final values, after CALIBRATED, so a key
+        # calibration leaves alone (the bed) is what can still fall outside
+        self.assertRefuses(self.run_tool(self.TOOL, flex_ini(ninja_bed='55')),
+                           'bed_temperature = 55 is outside (None, 50)')
