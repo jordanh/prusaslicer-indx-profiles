@@ -7,14 +7,14 @@
 #   supports_06_nozzle: True (tool 8 may hold the HF0.6)
 # Tools (all bound to this printer):
 #   0.4HF: Prusa's stock INDX tool: tools 1-7, and tool 8's default
-#   0.4: Bondtech INDX passive tool 0.4 for flexibles: standard flow, no CHT (bondtech.se/product/indx-passive-tool-0-4mm-flexibles)
+#   0.4: Bondtech INDX Passive Tool 0.4mm Standard Flow: single bore, no CHT core splitter, sold for flexibles (bondtech.se/product/indx-passive-tool-0-4mm-flexibles)
 #   0.6HF: Bondtech INDX CHT tool 0.6: high-flow CHT (bondtech.se/product/bondtech-indx-cht-tool)
 #   0.25: Bondtech INDX fine nozzle 0.25: standard single bore (bondtech.se/product/bondtech-indx-fine-nozzle)
 # printer_config c1indx-8t-jrh: tools 1-8 start as 0.4HF; pick tool 8 per session (alpha12 does not save it, prusa3d/PrusaSlicer#15737).
 kind: vendor
 id: hyigerINDX
 name: hyiger INDX
-version: 0.1.0
+version: 0.2.2
 features:
   printer:
     supports_high_flow_nozzle:

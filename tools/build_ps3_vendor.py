@@ -61,7 +61,7 @@ VALIDATED = False       # nothing here has been printed with PrusaSlicer 3 yet
 
 VENDOR_ID = 'hyigerINDX'
 VENDOR_NAME = 'hyiger INDX'
-VENDOR_VERSION = '0.1.0'
+VENDOR_VERSION = '0.2.2'   # 0.2.0: NinjaFlex and SemiFlex on the standard-flow 0.4; 0.2.1: SemiFlex calibrated; 0.2.2: NinjaFlex calibrated
 REPO_DIR = 'hyiger-indx'          # <datadir>/presets/local/<REPO_DIR>/<VENDOR_ID>
 PRINTER_NAME = 'Prusa CORE One INDX 8T JRH'   # the name the owner asked for
 PRINTER_DEF_ID = 'COREONE_INDX_JRH'
@@ -72,8 +72,9 @@ PRUSA_PRINTER_VARIANT = ('Prusa CORE One INDX', '8gQ0vRqlQQ++NPeD9RwmhQ')
 # id -> (name, nozzle_diameter, nozzle_high_flow, why)
 TOOLS = {
     '0.4HF': ('0.4 HF', 0.4, True, "Prusa's stock INDX tool: tools 1-7, and tool 8's default"),
-    '0.4': ('0.4', 0.4, False, 'Bondtech INDX passive tool 0.4 for flexibles: standard flow, '
-                               'no CHT (bondtech.se/product/indx-passive-tool-0-4mm-flexibles)'),
+    '0.4': ('0.4', 0.4, False, 'Bondtech INDX Passive Tool 0.4mm Standard Flow: single bore, '
+                               'no CHT core splitter, sold for flexibles '
+                               '(bondtech.se/product/indx-passive-tool-0-4mm-flexibles)'),
     '0.6HF': ('0.6 HF', 0.6, True, 'Bondtech INDX CHT tool 0.6: high-flow CHT '
                                    '(bondtech.se/product/bondtech-indx-cht-tool)'),
     '0.25': ('0.25', 0.25, False, 'Bondtech INDX fine nozzle 0.25: standard single bore '
@@ -152,7 +153,17 @@ FIL_SOURCES = [
      'tool.nozzle_diameter == 0.25 and not tool.nozzle_high_flow'),
     ('0.4', 'filaments/hyigerINDX-0.4-filaments.ini', '0.4',
      'tool.nozzle_diameter == 0.4 and not tool.nozzle_high_flow'),
+    ('0.4', 'filaments/hyigerINDX-0.4-flex-filaments.ini', '0.4',
+     'tool.nozzle_diameter == 0.4 and not tool.nozzle_high_flow'),
 ]
+# Ported materials Prusa's PS3 profiles have no filament of their own for: whose
+# features ($.type, $.tags) they take instead. Any other such material falls
+# back to its filament_type, which must be a $.type Prusa uses.
+FEATURES_FROM = {
+    'NinjaTek SemiFlex TPU': ('Fillamentum Flexfill 98A',
+                              'its 2.9 preset is built from Prusa\'s Flexfill 98A draft, the '
+                              '98A TPU Prusa once profiled together with SemiFlex'),
+}
 FIL_DROP = {
     'compatible_printers': '2.9 bookkeeping; PrusaSlicer 3 binds by YAML condition',
     'compatible_printers_condition': '2.9 bookkeeping; PrusaSlicer 3 binds by YAML condition',
@@ -627,6 +638,27 @@ def prusa_features(fil_coll, material):
     return out
 
 
+def material_features(every, mat, ftype, notes):
+    """The features of a ported material: Prusa's own for it, else those of the
+    material FEATURES_FROM names, else {'$.type': its filament_type}, which must
+    then be a $.type some Prusa filament uses (2.9's FLEX is not one)."""
+    feats = prusa_features(every, mat)
+    if feats is None and mat in FEATURES_FROM:
+        src, why = FEATURES_FROM[mat]
+        feats = prusa_features(every, src)
+        if feats is None:
+            refuse('Prusa has no %s to take %s\'s features from' % (src, mat))
+        notes.append('%s: features of Prusa\'s %s, as %s' % (mat, src, why))
+    if feats is None:
+        used = {str(t.get('features', {}).get('$.type')) for t in every.tops
+                if (t.get('features') or {}).get('$.type')}
+        if ftype not in used:
+            refuse('%s has filament_type %s, which is no $.type Prusa uses (%s); give it a '
+                   'FEATURES_FROM entry' % (mat, ftype, ', '.join(sorted(used))))
+        feats = {'$.type': ftype}
+    return feats
+
+
 def build_filament_ports(prusa, files, defs):
     fil = ps3_eval.Collection(prusa.kind_docs('filament', files))
     # Standard 0.4 is the one tool-8 size Prusa's PS3 profiles cover for the INDX;
@@ -655,9 +687,7 @@ def build_filament_ports(prusa, files, defs):
     every = ps3_eval.Collection(prusa.kind_docs('filament', sorted(prusa.docs)))
     for mat in sorted(ports):
         variants = [v for _, v, _, _ in ports[mat]]
-        feats = prusa_features(every, mat)
-        if feats is None:
-            feats = {'$.type': variants[0]['values']['filament_type']}
+        feats = material_features(every, mat, variants[0]['values']['filament_type'], notes)
         doc = {'kind': 'filament', 'id': ps3_yaml.new_id('filament', 'top', mat), 'name': mat,
                'condition': 'printer.base_model == "COREONE_INDX"', 'features': feats,
                'variants': variants + [{'name': '*quit*',

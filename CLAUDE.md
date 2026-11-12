@@ -34,7 +34,9 @@ that.
    the few chosen inputs whose basis is recorded beside it: the `flow` targets
    in `nozzles.py` (every derived speed is solved from them) and the
    `COMMON_EDITS` `bridge_speed = 30` and `interlocking_beam_width` (2 ×
-   nozzle). A new chosen input needs a defensible basis, a reason string and
+   nozzle). A value measured by a calibration print on an INDX is sourced
+   too, when the test is recorded beside it (`CALIBRATED` in
+   `derive_flex_filaments.py`). A new chosen input needs a defensible basis, a reason string and
    `validated=False` until printed. Where none of this is possible, the tool
    must **refuse** — see `derive_filaments.py` refusing 0.25 (no CORE One 0.25
    filament pair to scale MVS against) and `derive_std_filaments.py` refusing a
@@ -62,8 +64,10 @@ that.
 2. **Record provenance for anything changed.** `COMMON_EDITS` and `Nozzle.extra`
    in `nozzles.py`, `STD_EDITS` in `build_print_profiles.py`, `TRANSFER` /
    `DRAFT_ADOPT` / `DOCK_FAN` in `build_printer_preset.py`, `COMMON_ADOPT` in
-   `derive_filaments.py` and `STD_SKIP` (per material) in
-   `derive_std_filaments.py` carry a reason string per entry, as do
+   `derive_filaments.py`, `STD_SKIP` (per material) in
+   `derive_std_filaments.py` and `MATERIALS` / `FLEX_ADOPT` / `MAKER` /
+   `CALIBRATED` (each of the last two with its source) in
+   `derive_flex_filaments.py` carry a reason string per entry, as do
    `SIZE_LABELS` in `nozzles.py` and `SCALED_PRINTER` in
    `build_printer_preset.py` for HF1.0, and, for a mixed layout,
    `Layout.extra` in `nozzles.py`, `LAYOUT_BASE` / `ROLE_ANCHOR` /
@@ -89,7 +93,12 @@ that.
    warning banner in stdout and a comment in the emitted file, in the print
    bundle, the printer presets and the high-flow filament bundles alike;
    `STD_VALIDATED` does the same for every standard-nozzle output: `--std` on
-   the two build tools, and both `derive_std_filaments.py` bundles; and
+   the two build tools, and both `derive_std_filaments.py` bundles;
+   `VALIDATED` in `derive_flex_filaments.py` does it for the flex bundle (a
+   bundle of its own so that adding unprinted flexibles left the printed 0.4
+   bundle untouched; a material in `CALIBRATED` is reported as calibrated,
+   calibration prints only, and the rest as unprinted, while `VALIDATED`
+   stays `False` until a finished part is printed); and
    `Layout.validated` does it for a mixed layout's print profiles and printer
    preset. A layout composed entirely from printed sizes is still unprinted as a
    layout until a mixed print is made: the role split, the tool changes and the
@@ -112,7 +121,7 @@ that.
 ```
 vendor/hyigerINDX.ini      GENERATED  print profiles: HF0.6, HF0.8, HF1.0, standard 0.4, mixed 0.25+HF0.4 (plain 0.25 uses Prusa's)
 vendor/hyigerINDX.idx      handwritten  version index
-filaments/hyigerINDX-*.ini GENERATED  one bundle per nozzle size
+filaments/hyigerINDX-*.ini GENERATED  one bundle per nozzle size, plus 0.4-flex
 printer/*.ini              GENERATED  flattened printer presets, one per size plus one per mixed layout
 personal/*.ini             FOREIGN    exports from the Filament DB app
 personal/README.md         handwritten  why they don't import as a bundle
@@ -122,6 +131,7 @@ tools/build_print_profiles.py  GENERATOR  vendor bundle (HF sizes, --std 0.4)
 tools/build_printer_preset.py  GENERATOR  printer presets (HF sizes, --std)
 tools/derive_filaments.py      GENERATOR  high-flow filament bundles
 tools/derive_std_filaments.py  GENERATOR  standard-nozzle filament bundles
+tools/derive_flex_filaments.py GENERATOR  NinjaFlex / SemiFlex, standard-flow 0.4 (from Prusa's drafts)
 tests/test_generators.py   handwritten  synthetic-INI tests of refusals and guards
 ps3/hyigerINDX/            GENERATED  PrusaSlicer 3 vendor: the JRH printer (see "PrusaSlicer 3")
 tools/build_ps3_vendor.py  GENERATOR  ps3/hyigerINDX from Prusa's PS3 YAML + the 2.9 artifacts
@@ -161,6 +171,7 @@ python3 tools/derive_filaments.py "$PR" filaments/hyigerINDX-0.8-filaments.ini -
 python3 tools/derive_filaments.py "$PR" filaments/hyigerINDX-1.0-filaments.ini -n 1.0
 python3 tools/derive_std_filaments.py "$PR" filaments/hyigerINDX-0.4-filaments.ini -n 0.4
 python3 tools/derive_std_filaments.py "$PR" filaments/hyigerINDX-0.25-filaments.ini -n 0.25
+python3 tools/derive_flex_filaments.py "$PR" filaments/hyigerINDX-0.4-flex-filaments.ini
 ```
 
 The committed artifacts were generated from PrusaResearch **2.5.12**. PrusaSlicer
@@ -263,7 +274,8 @@ declared in `vendor.yaml`, so to test a tool-8 nozzle append a throwaway
 `printer_config` with eight `tools:` entries to the copy's `vendor.yaml`. The
 JSON lists each layer height with one tool_print per tool and one flat filament
 list (21 per HF0.4 tool, then tool 8's). On 2026-10-31 it agreed exactly with
-`LAYERS_EXPECTED` and with the generator's filament counts (23 / 19 / 14). A
+`LAYERS_EXPECTED` and with the generator's filament counts (23 / 19 / 14; 25 /
+19 / 14 since vendor 0.2.0 added NinjaFlex and SemiFlex, rechecked 2026-11-07). A
 `--slice` works too, but the CLI ignores `--perimeter-extruder` and has no
 per-object tool, so it cannot make tool 8 print. It also logs "Unable to load
 bed model" for every vendor, Prusa's included: assets are virtual `/presets/...`
@@ -271,7 +283,8 @@ paths only the GUI resolves.
 
 Reason-carrying tables (non-negotiable 2): `TOOLS`, `PRINTER_FEATURE_EDITS`,
 `HELD_007`, `STD04_WHY`, `SRC_025_WHY`, `SRC_06_WHY`, `PRINT_DROP`,
-`PRINT_RENAME`, `SUPPORT_29`, `FIL_DROP`, `PERCENT_IN_29`, `FALLTHROUGH_WHY`.
+`PRINT_RENAME`, `SUPPORT_29`, `FIL_DROP`, `PERCENT_IN_29`, `FALLTHROUGH_WHY`,
+`FEATURES_FROM`.
 The generated file headers list every added, ported, hidden and not-carried
 value. The one held value is the HF0.4 0.07 tool_print (Prusa's 0.10 Fine,
 held), which exists only so a 0.25 tool 8 can print 0.07.
@@ -433,9 +446,12 @@ holds.
   - **1042 INDX filament drafts.** 416 at `HF0.5`/`HF0.6`/`HF0.8` (135 / 144 /
     137 sections, 144 distinct filaments; the 0.5 and 0.8 name sets are subsets
     of 0.6's): pressure advance is taken from these where they set one; MVS is
-    not (see "Things that look wrong but aren't"). The 2 at `0.25` are above. No
-    generator reads the rest: 137 at `HF0.4`; 244 unsized `<mat> @COREONEINDX`
-    drafts for the standard nozzle (26 do not resolve; of the other 218, 81
+    not (see "Things that look wrong but aren't"). The 2 at `0.25` are above.
+    `derive_flex_filaments.py` reads two unsized standard-nozzle drafts,
+    `NinjaTek NinjaFlex TPU @COREONEINDX` and `Fillamentum Flexfill 98A
+    @COREONEINDX` (for SemiFlex). No generator reads the rest: 137 at `HF0.4`;
+    the other unsized `<mat> @COREONEINDX` drafts, of 244 for the standard
+    nozzle (26 do not resolve; of the other 218, 81
     bind `nozzle_diameter[0]==0.4 and ! nozzle_high_flow[0]` like
     `Prusament PLA @COREONEINDX`, 40 add `! nozzle_high_flow[0]` to an
     exclusion test, and the rest bind by exclusion or on diameter alone); 125 standard `0.6` and 113 standard `0.8`; 5 hidden `*INDX_PA_*`.
@@ -887,6 +903,31 @@ different layout, not the same one.
   to double. It is inert unless interlocking beams are switched on, exactly as
   on the `--std` path.
 
+- **NinjaFlex's derived MVS is 2.4, not the 3 Prusa's INDX draft types.** The
+  draft restates `@COREONE`'s 3, and Prusa cut both of its released INDX
+  flexibles by the same 0.8 (2.5 → 2); `derive_flex_filaments.py` applies that
+  ratio, as the high-flow bundles decline draft MVS that only restates CORE
+  One. The derived temperature stays the draft's 238 although both released
+  INDX flexibles print at 220: 220 is below NinjaTek's 225 °C minimum, and
+  `MAKER` refuses it. The emitted preset carries neither: `CALIBRATED` sets
+  230 °C, MVS 1.5 and retraction 0.2 mm at 25 mm/s from hyiger's tower and
+  calibration cube on tool 8 (2026-11-09). 1.5 is a floor, below the 2.4 at
+  which Erik's Flow Ratio plugin tangled the 85A (its first layer ran
+  uncapped). `MAKER` is checked after `CALIBRATED`, so its fixture test
+  varies the bed, a key calibration leaves alone.
+- **SemiFlex is built from Prusa's Flexfill 98A draft.** Prusa has no SemiFlex
+  newer than the MK3 era; its `renamed_from` is `SemiFlex or Flexfill 98A`, and
+  the tool refuses if that link disappears. Only density, cost and spool weight
+  come from Prusa's `SemiFlex`; `filament_vendor` is NinjaTek where Prusa says
+  Generic.
+- **SemiFlex's MVS is 3.6, more than twice the derived 1.6**, and its
+  retraction 0.2 mm against Prusa's INDX flex 1.5. Both are `CALIBRATED`, from
+  hyiger's calibration prints on tool 8 (2026-11-07/08), as are its 225 °C, bed
+  60, EM 1.15 and fans; each carries its test. 3.6 is a floor: the flow tower
+  showed no failure band up to 4.5 mm³/s. Do not re-derive these away.
+- **The flex presets bind to standard 0.4 only**, although Prusa's own INDX
+  flexibles also reach the HF0.4 CHT: Bondtech sells its single-bore Standard
+  Flow tool for soft TPU because it drops the CHT core splitter.
 - **`0.2` is rejected.** There is no 0.2 mm INDX nozzle, and Prusa defines no
   INDX common below `*INDX_025_common*`. Not a bug.
 - **0.3 has no flow targets, and needs none.** There is no 0.3 mm INDX nozzle.

@@ -25,7 +25,7 @@ there is one printer with a swappable tool 8; see
 | **HF0.6** (Bondtech CHT) | `0.20mm Detail`, `0.25mm Balanced ★`, `0.32mm Draft` | 19 | test printed |
 | **HF0.8** (Bondtech CHT) | `0.30mm Detail`, `0.40mm Balanced ★`, `0.55mm Draft` | 19 | not test printed; print speeds extrapolated ([why](#known-gaps)) |
 | **HF1.0** (Bondtech CHT) | `0.38mm Detail`, `0.50mm Balanced ★`, `0.69mm Draft` | 19 | not test printed; scaled from 0.8 ([why](#known-gaps)) |
-| **0.4 standard** | Prusa's four HF0.4 profiles, rebound to a standard nozzle: `0.10mm Fine`, `0.15mm Detail`, `0.20mm Balanced ★`, `0.25mm Draft`, each `@COREONEINDX 0.4` | 17 | test printed |
+| **0.4 standard** | Prusa's four HF0.4 profiles, rebound to a standard nozzle: `0.10mm Fine`, `0.15mm Detail`, `0.20mm Balanced ★`, `0.25mm Draft`, each `@COREONEINDX 0.4` | 17, plus NinjaFlex and SemiFlex in a bundle of their own | test printed; NinjaFlex and SemiFlex calibrated, no finished part yet |
 | **0.25 standard** | none needed: Prusa ships `0.07mm Extra Fine`, `0.10mm Fine ★` and `0.15mm Detail`, each `@COREONEINDX 0.25` | 14 | test printed |
 | **0.25 + HF0.4 mixed** (0.25 on tool 1, HF0.4 on tools 2-8) | `0.07mm Detail`, `0.10mm Balanced ★`, `0.15mm Draft`, each `@COREONEINDX 0.25+HF0.4` | 14 on tool 1, Prusa's own 20 on the rest | test printed ([details](#mixed-nozzles-025-on-tool-1-hf04-on-the-rest)) |
 
@@ -53,6 +53,7 @@ where each size's pressure advance comes from is under
 vendor/hyigerINDX.ini, .idx       print profiles for HF0.6, HF0.8, HF1.0, standard 0.4 and the 0.25+HF0.4 mix (one bundle)
 printer/*.ini                     one printer preset per nozzle, plus one for the 0.25+HF0.4 mix (8T)
 filaments/hyigerINDX-<size>-filaments.ini   one filament bundle per nozzle
+filaments/hyigerINDX-0.4-flex-filaments.ini NinjaFlex and SemiFlex, standard-flow 0.4 only
 personal/                         the author's own extra filaments, exported from Filament DB (see its README)
 tools/, tests/                    the generators for vendor/hyigerINDX.ini, printer/ and filaments/
 ```
@@ -161,7 +162,9 @@ selected after switching to it.
 
 **File → Import → Import Config Bundle…** and pick the bundle for your nozzle:
 `filaments/hyigerINDX-0.6-filaments.ini`, `-0.8-`, `-1.0-`, `-0.4-` or `-0.25-`.
-They import as ordinary user presets.
+They import as ordinary user presets. For NinjaTek NinjaFlex or SemiFlex on a
+standard-flow 0.4 (Bondtech's single-bore *Passive Tool 0.4mm Standard Flow*),
+also import `filaments/hyigerINDX-0.4-flex-filaments.ini`.
 
 For the mixed setup, import `-0.25-` only. Tools 2 to 8 are HF0.4, which is the
 one nozzle Prusa already ships filaments for, and PrusaSlicer offers each tool
@@ -297,7 +300,7 @@ Select the printer preset from step 2, not Prusa's HF0.4 one. You should see:
 | HF0.6 | 3, with a lock icon | 19 |
 | HF0.8 | 3, with a lock icon | 19 |
 | HF1.0 | 3, with a lock icon | 19, plus some of Prusa's own (see below) |
-| 0.4 standard | 4, with a lock icon | 17, plus Prusa's Generic FLEX and Prusament TPU 95A |
+| 0.4 standard | 4, with a lock icon | 17, or 19 with the flex bundle, plus Prusa's Generic FLEX and Prusament TPU 95A |
 | 0.25 standard | Prusa's 3 | 14 |
 | 0.25 + HF0.4 mixed | 3, with a lock icon, plus Prusa's 3 `@COREONEINDX 0.25` (see above) | per tool: 14 on tool 1, Prusa's 20 on tools 2-8 |
 
@@ -375,6 +378,19 @@ Every number is a starting point. Calibrate in this order:
   100 mm/s instead of 60. Set it by hand if top surfaces suffer. The mixed
   profiles are built on those same profiles and carry the typo as written,
   rather than quietly changing a speed the 0.25 setup was test printed with.
+- **NinjaFlex and SemiFlex are calibrated but unproven.** Both are Prusa's
+  own unreleased INDX drafts (for SemiFlex, the draft for Flexfill 98A, which
+  Prusa once profiled together with it), completed with the toolchanger
+  settings Prusa's two released INDX flexibles share, then given values from
+  calibration prints on an INDX, with no finished part yet. SemiFlex: 225 °C,
+  bed 60, EM 1.15, MVS 3.6, retraction 0.2 mm; its MVS is a floor, as the flow
+  tower showed no failure up to 4.5 mm³/s. NinjaFlex: 230 °C, MVS 1.5,
+  retraction 0.2 mm at 25 mm/s, after a calibration cube printed cleanly with
+  them; its MVS is a floor and its extrusion multiplier (1.12) and retraction
+  are not yet tested on their own. Soft 85A tangles at the extruder gear when
+  pushed too fast, and Prusa lists flex tangling in the INDX head as a known
+  firmware issue. They bind to a standard 0.4 only, not the HF0.4 CHT.
+  [How they are built](docs/PROVENANCE.md#flexibles-prusa-has-only-drafted).
 - **Three print profiles per high-flow nozzle, not four.** Prusa's 0.4 lineup
   also has a Fine profile; the standard 0.4 copies all four.
 - **Generic PVA is not included** at any nozzle: Prusa has no CORE One PVA to
@@ -412,7 +428,7 @@ a separate vendor holding one printer, **Prusa CORE One INDX 8T JRH**:
 | Tool 8 | For | Layer heights offered | Tool 8 filaments |
 |---|---|---|---|
 | HF0.4 (stock) | anything | 0.10, 0.15, 0.20, 0.25 | Prusa's 20 |
-| 0.4 standard (Bondtech flexibles tool) | TPU | 0.10, 0.15, 0.20, 0.25 | Prusa's 20, including TPU 95A and Generic FLEX, plus PC Blend CF, PETG V0 and PVB |
+| 0.4 standard (Bondtech Standard Flow, single bore) | TPU | 0.10, 0.15, 0.20, 0.25 | Prusa's 20, including TPU 95A and Generic FLEX, plus PC Blend CF, PETG V0, PVB, NinjaFlex and SemiFlex |
 | HF0.6 (Bondtech CHT) | PC-CF | 0.20, 0.25 | 19, including PC Blend Carbon Fiber |
 | 0.25 standard (Bondtech fine) | small, detailed PLA/PETG | 0.07, 0.10, 0.15 | 14 |
 
@@ -440,6 +456,8 @@ To know before trusting it:
 - On an HF0.6 or 0.25 tool 8, the JRH printer hides twelve of Prusa's materials
   (Generic ASA, Generic PC, the BVOHs, ...) that would otherwise fall through
   to a preset tuned for no nozzle. Stock PrusaSlicer 3 shows them.
+- NinjaFlex and SemiFlex have calibration prints only (see
+  [Known gaps](#known-gaps)); they appear only with the standard 0.4 in tool 8.
 - PC-CF is abrasive: set tool 8's nozzle as hardened on the printer, or the
   start G-code's nozzle check (`M862.1 ... A1`) will warn.
 - Sending to the printer through Prusa Connect or PrusaLink with a non-Prusa

@@ -576,3 +576,28 @@ class Install(Scratch):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class PortedFeatures(unittest.TestCase):
+    """A ported material Prusa has no PS3 filament for gets features it can use."""
+
+    def coll(self):
+        return ps3_eval.Collection([
+            {'kind': 'filament', 'id': 'flexfill', 'name': 'Fillamentum Flexfill 98A',
+             'features': {'$.type': 'TPU'}},
+            {'kind': 'filament', 'id': 'pla', 'name': 'Some PLA', 'features': {'$.type': 'PLA'}}])
+
+    def test_features_from_a_named_sibling(self):
+        notes = []
+        self.assertEqual(bpv.material_features(self.coll(), 'NinjaTek SemiFlex TPU', 'FLEX', notes),
+                         {'$.type': 'TPU'})
+        self.assertIn('Fillamentum Flexfill 98A', notes[0])
+
+    def test_filament_type_used_when_prusa_uses_it(self):
+        self.assertEqual(bpv.material_features(self.coll(), 'Other PLA', 'PLA', []),
+                         {'$.type': 'PLA'})
+
+    def test_refuses_a_type_prusa_does_not_use(self):
+        with self.assertRaises(SystemExit) as e:
+            bpv.material_features(self.coll(), 'Other Flex', 'FLEX', [])
+        self.assertIn('no $.type Prusa uses', str(e.exception))

@@ -121,6 +121,67 @@ presets for them already accept a standard 0.4, and the INDX has no 0.25 FLEX
 base. Generic PVA is not built at either size: with no CORE One PVA there is no
 standard parent to swap in and no standard-nozzle MVS to cap at.
 
+### Filament presets for flexibles (standard-flow 0.4 mm)
+
+`filaments/hyigerINDX-0.4-flex-filaments.ini`, a separate bundle so the test
+printed 0.4 bundle stays as it was. Both are **calibrated** on an INDX,
+calibration prints only, no finished part yet: SemiFlex (temperature, extrusion
+multiplier, MVS, retraction) and NinjaFlex (temperature, MVS, retraction; its
+extrusion multiplier is still the derived 1.12). Both bind to a
+standard-flow 0.4 only (`nozzle_diameter[0]==0.4 and ! nozzle_high_flow[0]`),
+which on the INDX is Bondtech's *INDX Passive Tool 0.4mm Standard Flow*: a
+single-bore nozzle without the CHT core splitter, sold for soft TPU and TPE.
+How they are built: [Flexibles Prusa has only drafted](#flexibles-prusa-has-only-drafted).
+
+| Material | Built from | MVS | Nozzle / bed °C | Fan | EM | Retract |
+|---|---|---|---|---|---|---|
+| NinjaTek NinjaFlex TPU (85A) | Prusa's draft `NinjaTek NinjaFlex TPU @COREONEINDX`, then `CALIBRATED` | **1.5**, calibrated (derived 3 × 0.8 = 2.4) | 230 / 50, calibrated (derived 238 / 50) | 40-55%, from layer 2; bridges 70% | 1.12 | 0.2 mm at 25 / 20 mm/s, calibrated (derived 1.5 at 60) |
+| NinjaTek SemiFlex TPU (98A) | Prusa's draft `Fillamentum Flexfill 98A @COREONEINDX`, with SemiFlex's density and cost, then `CALIBRATED` | **3.6**, calibrated (derived 2 × 0.8 = 1.6) | 225 / 60, calibrated (derived 240 / 50) | 25%, from layer 5; bridges 66% | 1.15, calibrated (derived 1.08) | 0.2 mm, calibrated, at 60 / 20 mm/s |
+
+Pressure advance is 0 for both (`*C1INDX_FLEX_PA*`), as for every INDX flexible.
+NinjaTek publishes 225-250 °C, bed room temperature to 50 °C and 15-35 mm/s
+for NinjaFlex (ninjatek.com/shop/ninjaflex); the preset is inside all three
+(1.5 mm³/s is 18 mm/s on a 0.45 × 0.20 line; the derived 2.4 was 29), and the
+build refuses if it is not. The check runs on the final values, after
+`CALIBRATED`, so a calibration print cannot move a preset outside them. NinjaTek no longer lists SemiFlex, so there is no published range to
+check that one against.
+
+SemiFlex's calibrated values and the test behind each, from hyiger's
+calibration prints on tool 8 (Bondtech Standard Flow 0.4, PrusaSlicer
+3.0.0-alpha12, 2026-11-07/08); `CALIBRATED` in `derive_flex_filaments.py`
+carries the same reasons into the preset's notes and the bundle header:
+
+| Key | Value (derived) | Test |
+|---|---|---|
+| `temperature`, `first_layer_temperature` | 225 (240) | temperature tower: 225 printed best; the first layer stays at 225, the hotter bed giving it grip |
+| `bed_temperature`, `first_layer_bed_temperature` | 60 (50) | Flow Ratio coupons warped and one came free at 50; the retry at 60, Prusa's Generic FLEX `@COREONEINDX HF0.4` bed, held |
+| `extrusion_multiplier` | 1.15 (1.08) | Flow Ratio pads 1.04-1.20 in steps of 0.02: 1.14 and 1.16 best, split |
+| `filament_max_volumetric_speed` | 3.6 (1.6) | flow tower 1-4.5 mm³/s showed no clear failure band: 80% of 4.5, a floor rather than a measured limit |
+| `filament_retract_length` | 0.2 (1.5) | retraction tower: least stringing at 0.2 mm, more at every longer length |
+| `min_fan_speed`, `max_fan_speed` | 25 (45) | lowered against the corner curl on the first Flow Ratio coupons |
+| `bridge_fan_speed` | 66 (70) | set in the calibrated preset; no test recorded for it |
+
+NinjaFlex's calibrated values, from hyiger's calibration prints on the same
+tool 8 setup (2026-11-09):
+
+| Key | Value (derived) | Test |
+|---|---|---|
+| `temperature`, `first_layer_temperature` | 230 (238) | temperature tower: 230 printed best; a calibration cube then printed cleanly at it, its first layer holding on the 50 °C bed |
+| `filament_max_volumetric_speed` | 1.5 (2.4) | Flow Ratio failed twice at 2.4, its first layer running about 3.1 mm³/s past the cap, and the TPU tangled at the extruder gear; at 1.5 the calibration cube printed cleanly. A floor rather than a measured limit |
+| `filament_retract_length` | 0.2 (1.5) | SemiFlex's tower result, taken as the start for the softer 85A; the cube printed cleanly with it. No retraction tower yet |
+| `filament_retract_speed` | 25 (60) | lowered from the released 95A flexibles' 60 so 85A is not pulled hard through the gear; the cube printed cleanly with it. Not tested on its own |
+| `max_fan_speed`, `bridge_fan_speed` | 55, 70 (50, 60) | set in hyiger's test preset; the cube printed cleanly with them; no test recorded for them |
+
+The Flow Ratio plugin (`build.erik.calibration`) up to 0.9.0 printed its first
+layer at a fixed 30 mm/s with a 1.4 × nozzle line, about 3.1 mm³/s at 0.2 mm,
+which it did not cap by the filament's MVS, and it took retraction from the
+print preset rather than the tool's filament (0.8 mm at 35 mm/s with a lift,
+where tool 8's filament said 0.2). At SemiFlex's derived 1.6 that starved the
+first layer, part of why the first coupons lifted; the retry slowed layer 1 by
+hand. On NinjaFlex it tangled the 85A at the gear. hyiger's fork of the plugin,
+0.9.1, caps every extrusion by the filament's MVS and reads retraction filament
+first, then tool, then print.
+
 ---
 
 ## Provenance
@@ -334,6 +395,46 @@ PrusaSlicer's chain the last parent wins and a body beats its parents, so the
 value would replace the common's and be passed off as the preset's own. A per-nozzle common Prusa later puts
 under a standard base may change only keys reviewed into `COMMON_ADOPT`, and
 the bundle header and `filament_notes` record them.
+
+### Flexibles Prusa has only drafted
+
+Prusa releases two INDX flexibles, Generic FLEX and Prusament TPU 95A
+`@COREONEINDX HF0.4`. Each is `<material> @COREONE; *FLEX04PGC1INDX*` plus the
+same toolchanger body: start G-code `M572 S0` and `M906 P2` (the extruder
+motor current Prusa sets for flexibles and BVOH), ramming flow 2 mm³/s, purge
+15, retraction 1.5 mm at 60 / 20 mm/s with none on layer change, and no travel
+ramping lift. Prusa's commented-out drafts for other flexibles,
+`; [filament:<material> @COREONEINDX]`, have the parents but not that body.
+Resolved as drafted they would ram at `*C1INDX_common*`'s 30 mm³/s, a PLA rate,
+and retract 3-3.5 mm from their MK4 parents. `tools/derive_flex_filaments.py`
+completes them:
+
+- the draft, resolved;
+- each `FLEX_ADOPT` key (the body above, key by key with a reason) set to the
+  value both released flexibles agree on. If they stop agreeing, the build
+  refuses;
+- MVS is the draft's CORE One parent's MVS × the ratio by which both released
+  flexibles cut theirs on the INDX (2.5 → 2, so 0.8; refuses if the two
+  ratios differ). Each draft types the CORE One figure unchanged, which the
+  high-flow bundles also decline to adopt (see
+  [Gaps in detail](#gaps-in-detail));
+- temperatures, bed, fans, cooling and extrusion multiplier stay the draft's:
+  they belong to the material. The released pair's shared 220 °C is not taken;
+  it is below NinjaTek's published 225 °C minimum for NinjaFlex (`MAKER`, checked);
+- last, a material in `CALIBRATED` takes the values its calibration prints
+  settled on, each with its test, over whatever the steps above produced. A
+  calibrated key the derivation never sets refuses, so a misspelt key cannot
+  be added silently. Calibration prints are not a finished part: `VALIDATED`
+  stays `False`.
+
+SemiFlex has no CORE One profile at all; Prusa's `SemiFlex` is an MK3-era
+section marked discontinued. Its `renamed_from` is `SemiFlex or Flexfill 98A`:
+Prusa once had one profile for both 98A TPUs, and after the split both still
+carry EM 1.12 and MVS 1.35. So the SemiFlex preset is Prusa's Flexfill 98A
+INDX draft, completed as above, with SemiFlex's own density (1.22) and cost and
+without Fillamentum's spool weight. The tool checks that `renamed_from` link and
+refuses if Prusa ever drops it. It also refuses once Prusa releases any of these
+drafts, or ships an INDX HF0.4 preset for either material.
 
 ### Mixed tool layouts — composed, not derived
 
@@ -1143,9 +1244,12 @@ preset, translated key by key (`port_filament()`):
 
 - HF0.6: all 19 from `filaments/hyigerINDX-0.6-filaments.ini`;
 - 0.25: all 14 from `filaments/hyigerINDX-0.25-filaments.ini`;
-- standard 0.4: only Prusament PC Blend Carbon Fiber, PETG V0 and PVB, the
-  three in `filaments/hyigerINDX-0.4-filaments.ini` that Prusa's PS3 INDX
-  profiles lack.
+- standard 0.4: Prusament PC Blend Carbon Fiber, PETG V0 and PVB, the three
+  in `filaments/hyigerINDX-0.4-filaments.ini` that Prusa's PS3 INDX profiles
+  lack, and NinjaFlex and SemiFlex from
+  `filaments/hyigerINDX-0.4-flex-filaments.ini`. Prusa's PS3 NinjaFlex
+  condition, `printer.base_model=~/(COREONE|MK4|...)/`, is a full-string match,
+  so it never reaches an INDX.
 
 Pressure advance moves out of the start G-code. 2.9 writes
 `M572 S<pa> ; Pressure advance` then `M573 R`; PrusaSlicer 3 emits exactly those
@@ -1159,7 +1263,10 @@ the plain keys PrusaSlicer 3 lets a filament override; 2.9's bare `20` for
 load/unload times and the bookkeeping keys are dropped. `filament_notes` is
 kept: the INDX start G-code still reads `MBL160` and `HT_MBL10` from it.
 Features (`$.type`, `$.tags: [abrasive, contains_carbon_fiber]`) come from
-Prusa's document for the same material.
+Prusa's document for the same material. SemiFlex has none in PrusaSlicer 3,
+so it takes Flexfill 98A's (`FEATURES_FROM`, `$.type: TPU`). Any other material
+without one falls back to its `filament_type`, and that must be a `$.type` some
+Prusa filament uses: 2.9's `FLEX` is not one, so it refuses.
 
 ### Twelve of Prusa's materials are hidden on HF0.6 and 0.25
 
@@ -1187,6 +1294,11 @@ Fiber on tool 8 completed and wrote tool 8's nozzle (0.6), `filament_abrasive`
 (1), MVS (19) and temperature (290) into the G-code. What the CLI could not
 check: tool 8 actually printing (it cannot assign an object to a tool), the
 GUI, and sending to the printer.
+
+On 2026-11-07, after NinjaFlex and SemiFlex were added (vendor 0.2.0), the same
+query with a standard 0.4 tool 8 listed 25 filaments on tool 8 (7 × 21 + 25 =
+172 per layer height), both new presets at all five print presets, and no
+`Invalid key`. With HF0.4 on all eight tools neither appeared (8 × 21 = 168).
 
 ### Pinning and re-pinning
 
